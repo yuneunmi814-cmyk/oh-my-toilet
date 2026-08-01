@@ -67,17 +67,30 @@ export default function HomeScreen() {
                 </Text>
               </View>
             ) : null}
-            <Pressable
-              style={({ pressed }) => [
-                styles.mapButton,
-                pressed && styles.mapButtonPressed,
-              ]}
-              onPress={() => router.push("/map")}
-              accessibilityRole="button"
-              accessibilityLabel="지도로 보기"
-            >
-              <Text style={styles.mapButtonText}>🗺️  지도로 보기</Text>
-            </Pressable>
+            <View style={styles.navRow}>
+              <Pressable
+                style={({ pressed }) => [
+                  styles.navButton,
+                  pressed && styles.navButtonPressed,
+                ]}
+                onPress={() => router.push("/map")}
+                accessibilityRole="button"
+                accessibilityLabel="지도로 보기"
+              >
+                <Text style={styles.navButtonText}>🗺️  지도</Text>
+              </Pressable>
+              <Pressable
+                style={({ pressed }) => [
+                  styles.navButton,
+                  pressed && styles.navButtonPressed,
+                ]}
+                onPress={() => router.push("/favorites")}
+                accessibilityRole="button"
+                accessibilityLabel="즐겨찾기"
+              >
+                <Text style={styles.navButtonText}>⭐  즐겨찾기</Text>
+              </Pressable>
+            </View>
           </View>
         }
         renderItem={({ item }) => <ToiletCard toilet={item} />}
@@ -120,16 +133,21 @@ const styles = StyleSheet.create({
     marginTop: spacing.xs,
   },
   heroMeta: { color: "#ECFDF5", fontSize: fontSize.md, marginTop: spacing.xs },
-  mapButton: {
+  navRow: {
+    flexDirection: "row",
+    gap: spacing.md,
+    marginBottom: spacing.lg,
+  },
+  navButton: {
+    flex: 1,
     borderWidth: 2,
     borderColor: colors.primary,
     borderRadius: radius.md,
     paddingVertical: spacing.md,
     alignItems: "center",
-    marginBottom: spacing.lg,
   },
-  mapButtonPressed: { backgroundColor: colors.card },
-  mapButtonText: {
+  navButtonPressed: { backgroundColor: colors.card },
+  navButtonText: {
     color: colors.primary,
     fontSize: fontSize.md,
     fontWeight: "800",

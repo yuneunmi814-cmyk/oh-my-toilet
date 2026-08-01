@@ -1,31 +1,54 @@
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { formatDistance, walkingMinutes } from "@/lib/distance";
 import { openDirections } from "@/lib/directions";
+import { useFavorites } from "@/store/favorites";
 import { colors, fontSize, radius, spacing } from "@/theme";
-import type { ToiletWithDistance } from "@/types/toilet";
+import type { Toilet } from "@/types/toilet";
 
 interface Props {
-  toilet: ToiletWithDistance;
+  /** 홈/지도에서는 거리가 있고, 즐겨찾기에서는 없을 수 있다. */
+  toilet: Toilet & { distanceMeters?: number };
 }
 
-/** 홈 리스트의 화장실 한 칸. 탭하면 지도앱 길찾기로 연결. */
+/** 화장실 한 칸. 본문 탭 → 길찾기, 별 탭 → 즐겨찾기 토글. */
 export function ToiletCard({ toilet }: Props) {
+  const { isFavorite, toggleFavorite } = useFavorites();
+  const fav = isFavorite(toilet.id);
+  const hasDistance = typeof toilet.distanceMeters === "number";
+
   return (
     <Pressable
       style={({ pressed }) => [styles.card, pressed && styles.pressed]}
       onPress={() => openDirections(toilet)}
       accessibilityRole="button"
-      accessibilityLabel={`${toilet.name}, ${formatDistance(
-        toilet.distanceMeters
-      )}, 도보 ${walkingMinutes(toilet.distanceMeters)}분. 길찾기 열기`}
+      accessibilityLabel={`${toilet.name}${
+        hasDistance
+          ? `, ${formatDistance(toilet.distanceMeters!)}, 도보 ${walkingMinutes(
+              toilet.distanceMeters!
+            )}분`
+          : ""
+      }. 길찾기 열기`}
     >
       <View style={styles.row}>
         <Text style={styles.name} numberOfLines={1}>
           {toilet.name}
         </Text>
-        <Text style={styles.distance}>
-          {formatDistance(toilet.distanceMeters)}
-        </Text>
+        {hasDistance ? (
+          <Text style={styles.distance}>
+            {formatDistance(toilet.distanceMeters!)}
+          </Text>
+        ) : null}
+        <Pressable
+          onPress={() => toggleFavorite(toilet)}
+          hitSlop={10}
+          style={styles.starButton}
+          accessibilityRole="button"
+          accessibilityLabel={fav ? "즐겨찾기 해제" : "즐겨찾기 추가"}
+        >
+          <Text style={[styles.star, fav && styles.starOn]}>
+            {fav ? "⭐" : "☆"}
+          </Text>
+        </Pressable>
       </View>
 
       <Text style={styles.address} numberOfLines={1}>
@@ -33,9 +56,11 @@ export function ToiletCard({ toilet }: Props) {
       </Text>
 
       <View style={styles.tags}>
-        <Text style={styles.walk}>
-          🚶 도보 약 {walkingMinutes(toilet.distanceMeters)}분
-        </Text>
+        {hasDistance ? (
+          <Text style={styles.walk}>
+            🚶 도보 약 {walkingMinutes(toilet.distanceMeters!)}분
+          </Text>
+        ) : null}
         {toilet.openHours ? (
           <Text style={styles.tag}>🕒 {toilet.openHours}</Text>
         ) : null}
@@ -73,7 +98,11 @@ const styles = StyleSheet.create({
     fontSize: fontSize.lg,
     fontWeight: "800",
     color: colors.primary,
+    marginRight: spacing.sm,
   },
+  starButton: { paddingHorizontal: spacing.xs },
+  star: { fontSize: fontSize.xl, color: colors.textMuted },
+  starOn: { color: colors.accent },
   address: {
     fontSize: fontSize.sm,
     color: colors.textMuted,
