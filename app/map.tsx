@@ -1,5 +1,6 @@
-import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, StyleSheet, View } from "react-native";
 import MapView, { Marker, PROVIDER_DEFAULT } from "react-native-maps";
+import { AppText as Text } from "@/components/AppText";
 import { useLocation } from "@/hooks/useLocation";
 import { useNearbyToilets } from "@/hooks/useNearbyToilets";
 import { formatDistance, walkingMinutes } from "@/lib/distance";

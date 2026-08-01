@@ -2,12 +2,14 @@ import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { FavoritesProvider } from "@/store/favorites";
+import { SettingsProvider } from "@/store/settings";
 import { colors } from "@/theme";
 
 export default function RootLayout() {
   return (
     <SafeAreaProvider>
-      <FavoritesProvider>
+      <SettingsProvider>
+        <FavoritesProvider>
         <StatusBar style="light" />
         <Stack
           screenOptions={{
@@ -20,7 +22,8 @@ export default function RootLayout() {
           <Stack.Screen name="map" options={{ title: "지도로 보기" }} />
           <Stack.Screen name="favorites" options={{ title: "즐겨찾기 ⭐" }} />
         </Stack>
-      </FavoritesProvider>
+        </FavoritesProvider>
+      </SettingsProvider>
     </SafeAreaProvider>
   );
 }

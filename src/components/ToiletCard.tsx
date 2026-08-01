@@ -1,4 +1,5 @@
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, View } from "react-native";
+import { AppText as Text } from "@/components/AppText";
 import { formatDistance, walkingMinutes } from "@/lib/distance";
 import { openDirections } from "@/lib/directions";
 import { useFavorites } from "@/store/favorites";

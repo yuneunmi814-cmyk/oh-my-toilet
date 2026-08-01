@@ -1,6 +1,7 @@
 import { useMemo } from "react";
-import { FlatList, StyleSheet, Text, View } from "react-native";
+import { FlatList, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { AppText as Text } from "@/components/AppText";
 import { ToiletCard } from "@/components/ToiletCard";
 import { useLocation } from "@/hooks/useLocation";
 import { haversineMeters } from "@/lib/distance";

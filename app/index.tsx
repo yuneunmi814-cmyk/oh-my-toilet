@@ -5,19 +5,22 @@ import {
   Pressable,
   RefreshControl,
   StyleSheet,
-  Text,
+  Switch,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { AppText as Text } from "@/components/AppText";
 import { ToiletCard } from "@/components/ToiletCard";
 import { useLocation } from "@/hooks/useLocation";
 import { useNearbyToilets } from "@/hooks/useNearbyToilets";
+import { useSettings } from "@/store/settings";
 import { colors, fontSize, radius, spacing } from "@/theme";
 
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const { coords, status, refresh } = useLocation();
   const { toilets, loading, reload } = useNearbyToilets(coords);
+  const { largeText, toggleLargeText } = useSettings();
 
   // 위치 권한 거부 상태
   if (status === "denied") {
@@ -58,6 +61,15 @@ export default function HomeScreen() {
         }
         ListHeaderComponent={
           <View>
+            <View style={styles.settingRow}>
+              <Text style={styles.settingLabel}>큰 글씨 모드</Text>
+              <Switch
+                value={largeText}
+                onValueChange={toggleLargeText}
+                trackColor={{ true: colors.primary }}
+                accessibilityLabel="큰 글씨 모드 켜기 끄기"
+              />
+            </View>
             {nearest ? (
               <View style={styles.hero}>
                 <Text style={styles.heroLabel}>가장 가까운 화장실</Text>
@@ -133,6 +145,19 @@ const styles = StyleSheet.create({
     marginTop: spacing.xs,
   },
   heroMeta: { color: "#ECFDF5", fontSize: fontSize.md, marginTop: spacing.xs },
+  settingRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.xs,
+    marginBottom: spacing.md,
+  },
+  settingLabel: {
+    fontSize: fontSize.md,
+    fontWeight: "700",
+    color: colors.text,
+  },
   navRow: {
     flexDirection: "row",
     gap: spacing.md,
