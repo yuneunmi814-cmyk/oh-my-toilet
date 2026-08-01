@@ -1,0 +1,40 @@
+{
+  "expo": {
+    "name": "Oh My Toilet",
+    "slug": "oh-my-toilet",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "scheme": "ohmytoilet",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#0B8A6B"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "가까운 화장실을 찾기 위해 현재 위치를 사용합니다."
+      }
+    },
+    "android": {
+      "package": "com.ohmytoilet.app",
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION"
+      ]
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "가까운 화장실을 찾기 위해 현재 위치를 사용합니다."
+        }
+      ]
+    ],
+    "extra": {
+      "publicDataApiKey": ""
+    }
+  }
+}
