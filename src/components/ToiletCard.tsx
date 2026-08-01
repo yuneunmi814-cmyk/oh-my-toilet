@@ -1,5 +1,6 @@
-import { Linking, Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import { formatDistance, walkingMinutes } from "@/lib/distance";
+import { openDirections } from "@/lib/directions";
 import { colors, fontSize, radius, spacing } from "@/theme";
 import type { ToiletWithDistance } from "@/types/toilet";
 
@@ -9,19 +10,10 @@ interface Props {
 
 /** 홈 리스트의 화장실 한 칸. 탭하면 지도앱 길찾기로 연결. */
 export function ToiletCard({ toilet }: Props) {
-  const openDirections = () => {
-    const { latitude, longitude, name } = toilet;
-    // 카카오맵 길찾기 (설치 안 되어 있으면 브라우저로 폴백)
-    const url = `https://map.kakao.com/link/to/${encodeURIComponent(
-      name
-    )},${latitude},${longitude}`;
-    Linking.openURL(url).catch(() => {});
-  };
-
   return (
     <Pressable
       style={({ pressed }) => [styles.card, pressed && styles.pressed]}
-      onPress={openDirections}
+      onPress={() => openDirections(toilet)}
       accessibilityRole="button"
       accessibilityLabel={`${toilet.name}, ${formatDistance(
         toilet.distanceMeters

@@ -9,12 +9,13 @@
 
 ## MVP 범위
 
-| 포함 (v0.1) | 이후 버전 |
+| 포함 (v0.1~0.2) | 이후 버전 |
 | --- | --- |
-| 내 위치 기준 가까운 화장실 리스트 (거리순) | 지도 뷰 (react-native-maps) |
-| 화장실 상세: 개방시간 · 장애인칸 · 무료 여부 | 사용자 제보 / 리뷰 |
-| 카카오맵 길찾기 연결 | 즐겨찾기 저장 |
-| 위치 권한 처리 · 목업 폴백 | 가족 공유 · 시니어 큰글씨 모드 |
+| 내 위치 기준 가까운 화장실 리스트 (거리순) | 사용자 제보 / 리뷰 |
+| 지도 뷰 (핀 · 현재위치 · 탭하면 길찾기) | 즐겨찾기 저장 |
+| 화장실 상세: 개방시간 · 장애인칸 · 무료 여부 | 필터 (장애인/무료/개방중) |
+| 카카오맵 길찾기 연결 | 가족 공유 · 시니어 큰글씨 모드 |
+| 위치 권한 처리 · 목업 폴백 | OSM 데이터 병합 · 전국 커버리지 |
 
 핵심 지표: **앱을 열었을 때 가장 가까운 화장실이 즉시 뜬다.**
 
@@ -53,13 +54,26 @@ npx expo start
 
 ---
 
+## 지도 (react-native-maps)
+
+- **Expo Go 개발 중에는 별도 키 없이** 지도가 뜹니다 (Expo가 제공하는 키 사용).
+- iOS 정식 빌드는 Apple Maps라 키가 필요 없습니다.
+- **Android 정식(standalone) 빌드**에는 본인 Google Maps API 키가 필요합니다.
+  Google Cloud Console에서 "Maps SDK for Android" 키를 발급받아 `app.json` 에 추가하세요:
+  ```json
+  "android": {
+    "config": { "googleMaps": { "apiKey": "YOUR_ANDROID_MAPS_KEY" } }
+  }
+  ```
+
 ## 프로젝트 구조
 
 ```
 oh-my-toilet/
 ├── app/                    # expo-router 화면
 │   ├── _layout.tsx         # 루트 네비게이션
-│   └── index.tsx           # 홈: 가까운 화장실 리스트
+│   ├── index.tsx           # 홈: 가까운 화장실 리스트
+│   └── map.tsx             # 지도 뷰 (마커 + 길찾기)
 ├── src/
 │   ├── api/
 │   │   ├── toilets.ts      # 공공데이터 API 연동 + 목업 폴백
@@ -67,9 +81,11 @@ oh-my-toilet/
 │   ├── components/
 │   │   └── ToiletCard.tsx  # 화장실 리스트 카드
 │   ├── hooks/
-│   │   └── useLocation.ts  # 위치 권한 + 현재 위치
+│   │   ├── useLocation.ts       # 위치 권한 + 현재 위치
+│   │   └── useNearbyToilets.ts  # 가까운 화장실 조회 (홈·지도 공유)
 │   ├── lib/
-│   │   └── distance.ts     # 하버사인 거리 · 도보시간
+│   │   ├── distance.ts     # 하버사인 거리 · 도보시간
+│   │   └── directions.ts   # 카카오맵 길찾기 연결
 │   ├── theme/              # 시니어 접근성 고려 테마
 │   └── types/
 │       └── toilet.ts       # 화장실 데이터 타입

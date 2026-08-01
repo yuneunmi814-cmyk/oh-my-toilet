@@ -15,6 +15,7 @@ export default function RootLayout() {
         }}
       >
         <Stack.Screen name="index" options={{ title: "Oh My Toilet 🚽" }} />
+        <Stack.Screen name="map" options={{ title: "지도로 보기" }} />
       </Stack>
     </SafeAreaProvider>
   );

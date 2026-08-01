@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { router } from "expo-router";
 import {
   ActivityIndicator,
   FlatList,
@@ -9,31 +9,15 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { getNearbyToilets } from "@/api/toilets";
 import { ToiletCard } from "@/components/ToiletCard";
 import { useLocation } from "@/hooks/useLocation";
+import { useNearbyToilets } from "@/hooks/useNearbyToilets";
 import { colors, fontSize, radius, spacing } from "@/theme";
-import type { ToiletWithDistance } from "@/types/toilet";
 
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const { coords, status, refresh } = useLocation();
-  const [toilets, setToilets] = useState<ToiletWithDistance[]>([]);
-  const [loading, setLoading] = useState(false);
-
-  const load = useCallback(async () => {
-    if (!coords) return;
-    setLoading(true);
-    try {
-      setToilets(await getNearbyToilets(coords));
-    } finally {
-      setLoading(false);
-    }
-  }, [coords]);
-
-  useEffect(() => {
-    load();
-  }, [load]);
+  const { toilets, loading, reload } = useNearbyToilets(coords);
 
   // 위치 권한 거부 상태
   if (status === "denied") {
@@ -70,18 +54,31 @@ export default function HomeScreen() {
         keyExtractor={(t) => t.id}
         contentContainerStyle={styles.list}
         refreshControl={
-          <RefreshControl refreshing={loading} onRefresh={load} />
+          <RefreshControl refreshing={loading} onRefresh={reload} />
         }
         ListHeaderComponent={
-          nearest ? (
-            <View style={styles.hero}>
-              <Text style={styles.heroLabel}>가장 가까운 화장실</Text>
-              <Text style={styles.heroName}>{nearest.name}</Text>
-              <Text style={styles.heroMeta}>
-                여기서 {Math.round(nearest.distanceMeters)}m
-              </Text>
-            </View>
-          ) : null
+          <View>
+            {nearest ? (
+              <View style={styles.hero}>
+                <Text style={styles.heroLabel}>가장 가까운 화장실</Text>
+                <Text style={styles.heroName}>{nearest.name}</Text>
+                <Text style={styles.heroMeta}>
+                  여기서 {Math.round(nearest.distanceMeters)}m
+                </Text>
+              </View>
+            ) : null}
+            <Pressable
+              style={({ pressed }) => [
+                styles.mapButton,
+                pressed && styles.mapButtonPressed,
+              ]}
+              onPress={() => router.push("/map")}
+              accessibilityRole="button"
+              accessibilityLabel="지도로 보기"
+            >
+              <Text style={styles.mapButtonText}>🗺️  지도로 보기</Text>
+            </Pressable>
+          </View>
         }
         renderItem={({ item }) => <ToiletCard toilet={item} />}
         ListEmptyComponent={
@@ -123,6 +120,20 @@ const styles = StyleSheet.create({
     marginTop: spacing.xs,
   },
   heroMeta: { color: "#ECFDF5", fontSize: fontSize.md, marginTop: spacing.xs },
+  mapButton: {
+    borderWidth: 2,
+    borderColor: colors.primary,
+    borderRadius: radius.md,
+    paddingVertical: spacing.md,
+    alignItems: "center",
+    marginBottom: spacing.lg,
+  },
+  mapButtonPressed: { backgroundColor: colors.card },
+  mapButtonText: {
+    color: colors.primary,
+    fontSize: fontSize.md,
+    fontWeight: "800",
+  },
   emptyEmoji: { fontSize: 56, marginBottom: spacing.md },
   emptyTitle: {
     fontSize: fontSize.lg,
