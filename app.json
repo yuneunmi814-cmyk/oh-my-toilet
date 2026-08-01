@@ -31,7 +31,8 @@
         {
           "locationWhenInUsePermission": "가까운 화장실을 찾기 위해 현재 위치를 사용합니다."
         }
-      ]
+      ],
+      "expo-asset"
     ],
     "extra": {
       "publicDataApiKey": ""
