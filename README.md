@@ -26,32 +26,54 @@
 
 ```bash
 npm install
-cp .env.example .env   # (선택) 공공데이터 API 키 입력
 npx expo start
 ```
 
 - Expo Go 앱으로 QR 코드를 찍으면 실기기에서 바로 실행됩니다.
-- **API 키가 없어도** 서울 시청 주변 목업 데이터로 동작하므로 UI를 바로 확인할 수 있습니다.
+- **앱 실행에는 API 키가 필요 없습니다.** 실데이터([`src/data/toilets.json`](src/data/toilets.json))가
+  비어 있으면 서울 시청 주변 목업으로 동작하므로 UI를 바로 확인할 수 있습니다.
+- 실데이터를 채우려면 아래 [데이터 파이프라인](#데이터-파이프라인-실행법)을 실행하세요.
 - 네이티브 의존성 버전을 맞추려면: `npx expo install`
 
 ---
 
 ## 데이터 소스
 
-### 1. 공공데이터포털 – 전국공중화장실표준데이터 (메인)
+### 공공데이터 + 카카오 지오코딩 (메인)
 
-- 활용신청: https://www.data.go.kr/data/15012892/standard.do
-- 발급받은 **일반 인증키(Decoding)** 를 `.env` 의 `EXPO_PUBLIC_PUBLIC_DATA_API_KEY` 에 입력
-- 연동 코드: [`src/api/toilets.ts`](src/api/toilets.ts)
+원본은 **전국공중화장실표준데이터**(공공데이터포털 15012892)를 쓴다.
 
-> ⚠️ 표준데이터 API는 좌표 반경 검색을 지원하지 않고 전체 목록을 페이지로 내려줍니다.
-> MVP는 한 페이지를 받아 클라이언트에서 거리순 정렬합니다.
-> 전국 확장 시에는 데이터를 서버/DB에 적재해 반경 쿼리로 바꾸는 것을 권장합니다.
+> ⚠️ **중요:** 이 표준데이터는 **2025년 2월부터 WGS84 위·경도 좌표 제공이 중단**됐고,
+> 현재 오픈 API 없이 **CSV 다운로드만** 제공된다. 위치 기반 앱에 쓰려면 CSV의
+> **주소를 좌표로 변환(지오코딩)** 해야 한다. → [`scripts/build-toilets.mjs`](scripts/build-toilets.mjs)
 
-### 2. OpenStreetMap `amenity=toilets` (보완 예정)
+생성된 좌표 데이터는 [`src/data/toilets.json`](src/data/toilets.json) 에 저장되고,
+앱은 이를 번들에 포함해 클라이언트에서 거리순 정렬한다 ([`src/api/toilets.ts`](src/api/toilets.ts)).
+데이터셋이 비어 있으면 자동으로 목업으로 폴백한다.
+
+#### 데이터 파이프라인 실행법
+
+```bash
+# 1) 공공데이터포털에서 CSV 다운로드 (포털 로그인 필요)
+#    https://www.data.go.kr/data/15012892/standard.do  → "다운로드"
+
+# 2) 카카오 REST API 키 발급
+#    https://developers.kakao.com → 내 애플리케이션 → 앱 키 → REST API 키
+
+# 3) 지오코딩 실행 (지역 한정 권장 — 번들 크기 축소)
+KAKAO_REST_API_KEY=xxxx npm run build:toilets -- \
+  --csv ~/Downloads/전국공중화장실표준데이터.csv \
+  --sido "서울특별시"
+```
+
+- 재실행 시 `scripts/.geocode-cache.json` 에 캐싱된 좌표를 재사용 → 중단해도 이어서 진행
+- 옵션: `--out <경로>`, `--limit <n>`(테스트), `--sido` 생략 시 전국
+- CSV가 EUC-KR이면 `iconv`로 자동 변환
+
+### OpenStreetMap `amenity=toilets` (보완 예정)
 
 - 공공데이터에 없는 카페·건물 화장실, 유료 여부(`fee=yes`), 휠체어 접근(`wheelchair=yes`) 포함
-- Overpass API로 실시간 조회 가능 (무료)
+- 좌표 내장 + Overpass API 반경 조회 가능 (무료, 키 불필요) → 커버리지 보완용
 
 ---
 
@@ -78,8 +100,10 @@ oh-my-toilet/
 │   └── favorites.tsx       # 즐겨찾기 목록
 ├── src/
 │   ├── api/
-│   │   ├── toilets.ts      # 공공데이터 API 연동 + 목업 폴백
-│   │   └── mockToilets.ts  # 키 없을 때 쓰는 목업 데이터
+│   │   ├── toilets.ts      # 데이터셋 로드 + 거리순 정렬 + 목업 폴백
+│   │   └── mockToilets.ts  # 데이터 없을 때 쓰는 목업 데이터
+│   ├── data/
+│   │   └── toilets.json    # 파이프라인 생성 좌표 데이터 (기본 비어있음)
 │   ├── components/
 │   │   ├── ToiletCard.tsx  # 화장실 리스트 카드
 │   │   └── AppText.tsx     # 큰 글씨 배율 반영 Text
@@ -95,18 +119,21 @@ oh-my-toilet/
 │   ├── theme/              # 시니어 접근성 고려 테마
 │   └── types/
 │       └── toilet.ts       # 화장실 데이터 타입
+├── scripts/
+│   └── build-toilets.mjs   # CSV → 카카오 지오코딩 → toilets.json
 ├── app.json                # Expo 설정 (권한/플러그인)
-└── .env.example
+└── .env.example            # KAKAO_REST_API_KEY (파이프라인용)
 ```
 
 ---
 
 ## 로드맵
 
-- [ ] **v0.1** 리스트 MVP (현재)
-- [ ] **v0.2** 지도 뷰 + 필터(장애인/무료/개방중)
-- [ ] **v0.3** 즐겨찾기 · 시니어 큰글씨 모드
-- [ ] **v0.4** OSM 데이터 병합, 전국 커버리지
+- [x] **v0.1** 리스트 MVP
+- [x] **v0.2** 지도 뷰 (마커 + 길찾기)
+- [x] **v0.3** 즐겨찾기 · 시니어 큰글씨 모드
+- [x] **v0.4** 공공데이터 + 카카오 지오코딩 파이프라인 (실데이터 연동)
+- [ ] **v0.5** 필터(장애인/무료/개방중) · OSM 병합 · 전국 커버리지
 - [ ] **v1.0** 토스 앱인토스(미니앱) 출시 → 이후 구글 플레이
 
 ### 앱인토스(미니앱) 참고

@@ -31,6 +31,9 @@ yarn-error.*
 .env.local
 .env.*.local
 
+# 데이터 파이프라인 지오코딩 캐시
+scripts/.geocode-cache.json
+
 # IDE
 .idea/
 .vscode/
