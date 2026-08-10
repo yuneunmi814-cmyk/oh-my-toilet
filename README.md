@@ -106,13 +106,15 @@ oh-my-toilet/
 │   │   └── toilets.json    # 파이프라인 생성 좌표 데이터 (기본 비어있음)
 │   ├── components/
 │   │   ├── ToiletCard.tsx  # 화장실 리스트 카드
-│   │   └── AppText.tsx     # 큰 글씨 배율 반영 Text
+│   │   ├── AppText.tsx     # 큰 글씨 배율 반영 Text
+│   │   └── FilterBar.tsx   # 필터 칩 (장애인/개방중)
 │   ├── hooks/
 │   │   ├── useLocation.ts       # 위치 권한 + 현재 위치
 │   │   └── useNearbyToilets.ts  # 가까운 화장실 조회 (홈·지도 공유)
 │   ├── lib/
 │   │   ├── distance.ts     # 하버사인 거리 · 도보시간
-│   │   └── directions.ts   # 카카오맵 길찾기 연결
+│   │   ├── directions.ts   # 카카오맵 길찾기 연결
+│   │   └── openNow.ts      # 개방시간 → 지금 개방중 판별
 │   ├── store/
 │   │   ├── favorites.tsx   # 즐겨찾기 Context (AsyncStorage 영구저장)
 │   │   └── settings.tsx    # 앱 설정 Context (큰 글씨 모드 등)
@@ -133,7 +135,8 @@ oh-my-toilet/
 - [x] **v0.2** 지도 뷰 (마커 + 길찾기)
 - [x] **v0.3** 즐겨찾기 · 시니어 큰글씨 모드
 - [x] **v0.4** 공공데이터 + 카카오 지오코딩 파이프라인 (실데이터 연동)
-- [ ] **v0.5** 필터(장애인/무료/개방중) · OSM 병합 · 전국 커버리지
+- [x] **v0.5** 필터 (♿ 장애인 · 🕒 지금 개방중)
+- [ ] **v0.6** 무료/유료 필터(OSM `fee` 병합) · 지도에도 필터 적용 · 전국 커버리지
 - [ ] **v1.0** 토스 앱인토스(미니앱) 출시 → 이후 구글 플레이
 
 ### 앱인토스(미니앱) 참고

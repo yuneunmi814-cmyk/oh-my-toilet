@@ -1,4 +1,5 @@
 import { router } from "expo-router";
+import { useMemo, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -10,17 +11,42 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText as Text } from "@/components/AppText";
+import { FilterBar, type FilterChip } from "@/components/FilterBar";
 import { ToiletCard } from "@/components/ToiletCard";
 import { useLocation } from "@/hooks/useLocation";
 import { useNearbyToilets } from "@/hooks/useNearbyToilets";
+import { isOpenNow } from "@/lib/openNow";
 import { useSettings } from "@/store/settings";
 import { colors, fontSize, radius, spacing } from "@/theme";
+
+const FILTER_CHIPS: FilterChip[] = [
+  { key: "disabled", label: "♿ 장애인" },
+  { key: "openNow", label: "🕒 지금 개방중" },
+];
 
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const { coords, status, refresh } = useLocation();
   const { toilets, loading, reload } = useNearbyToilets(coords);
   const { largeText, toggleLargeText } = useSettings();
+  const [filters, setFilters] = useState<Record<string, boolean>>({
+    disabled: false,
+    openNow: false,
+  });
+
+  const toggleFilter = (key: string) =>
+    setFilters((prev) => ({ ...prev, [key]: !prev[key] }));
+
+  // 필터 적용 (개방중은 '닫힘이 확실한' 곳만 제외 — 정보 없으면 남김)
+  const filtered = useMemo(
+    () =>
+      toilets.filter((t) => {
+        if (filters.disabled && !t.hasDisabledStall) return false;
+        if (filters.openNow && isOpenNow(t.openHours) === false) return false;
+        return true;
+      }),
+    [toilets, filters]
+  );
 
   // 위치 권한 거부 상태
   if (status === "denied") {
@@ -48,12 +74,13 @@ export default function HomeScreen() {
     );
   }
 
-  const nearest = toilets[0];
+  const nearest = filtered[0];
+  const anyFilterOn = filters.disabled || filters.openNow;
 
   return (
     <View style={[styles.container, { paddingBottom: insets.bottom }]}>
       <FlatList
-        data={toilets}
+        data={filtered}
         keyExtractor={(t) => t.id}
         contentContainerStyle={styles.list}
         refreshControl={
@@ -103,6 +130,11 @@ export default function HomeScreen() {
                 <Text style={styles.navButtonText}>⭐  즐겨찾기</Text>
               </Pressable>
             </View>
+            <FilterBar
+              chips={FILTER_CHIPS}
+              active={filters}
+              onToggle={toggleFilter}
+            />
           </View>
         }
         renderItem={({ item }) => <ToiletCard toilet={item} />}
@@ -111,8 +143,13 @@ export default function HomeScreen() {
             <View style={styles.center}>
               <Text style={styles.emptyEmoji}>🚽</Text>
               <Text style={styles.emptyTitle}>
-                주변 화장실을 찾지 못했어요
+                {anyFilterOn
+                  ? "필터에 맞는 화장실이 없어요"
+                  : "주변 화장실을 찾지 못했어요"}
               </Text>
+              {anyFilterOn ? (
+                <Text style={styles.emptyDesc}>필터를 꺼보세요.</Text>
+              ) : null}
             </View>
           ) : null
         }
