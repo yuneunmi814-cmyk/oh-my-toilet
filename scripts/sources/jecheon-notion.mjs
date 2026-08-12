@@ -9,27 +9,20 @@
  * 각 naver.me 링크를 따라가면 주소와 좌표(웹 메르카토르, EPSG:3857)가 나오므로,
  * 이를 WGS84 위경도로 변환해 앱 데이터셋을 만든다. (카카오 지오코딩 불필요)
  *
- * 사용법:  node scripts/ingest-jecheon-notion.mjs
+ * 결과는 data/raw/jecheon.json 에 저장되고, 앱 데이터는
+ * scripts/build-dataset.mjs 가 다른 소스와 병합해 만든다.
+ *
+ * 사용법:  node scripts/sources/jecheon-notion.mjs
  * 옵션:    --page <notion_page_id>   (기본: 제천 개방화장실 페이지)
- *          --out <경로>              (기본: src/data/toilets.json)
  */
-import fs from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { ROOT, argOf, writeRaw } from "../lib/dataset.mjs";
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const ROOT = path.resolve(__dirname, "..");
-
-function arg(name, def) {
-  const i = process.argv.indexOf(`--${name}`);
-  return i >= 0 ? process.argv[i + 1] : def;
-}
-const RAW_PAGE = arg("page", "3b0ac045c33f49709a835b743864600d");
-const PAGE_ID = RAW_PAGE.replace(
+const RAW_PAGE = argOf("page", "3b0ac045c33f49709a835b743864600d");
+const PAGE_ID = String(RAW_PAGE).replace(
   /^(.{8})(.{4})(.{4})(.{4})(.{12})$/,
   "$1-$2-$3-$4-$5"
 );
-const OUT_PATH = path.resolve(ROOT, arg("out", "src/data/toilets.json"));
 const NOTION_HOST = "https://caramel-match-caa.notion.site";
 
 // 공중화장실 성격이 강한 장소(24시간 공공시설)는 public, 나머지는 open으로 분류
@@ -148,11 +141,11 @@ async function main() {
     await sleep(150);
   }
 
-  fs.mkdirSync(path.dirname(OUT_PATH), { recursive: true });
-  fs.writeFileSync(OUT_PATH, JSON.stringify(out, null, 0), "utf8");
+  const outPath = writeRaw("jecheon", out);
   console.log(
-    `\n✅ 완료: ${out.length}/${rows.length}곳 → ${path.relative(ROOT, OUT_PATH)}`
+    `\n✅ 완료: ${out.length}/${rows.length}곳 → ${path.relative(ROOT, outPath)}`
   );
+  console.log("   다음: npm run build:dataset 으로 병합하세요.");
 }
 
 main().catch((e) => {
