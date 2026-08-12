@@ -19,7 +19,14 @@
  */
 import fs from "node:fs";
 import path from "node:path";
-import { RAW_DIR, argOf, isInKorea, sleep, writeRaw } from "../lib/dataset.mjs";
+import {
+  RAW_DIR,
+  argOf,
+  isInKorea,
+  normalizeOpenHours,
+  sleep,
+  writeRaw,
+} from "../lib/dataset.mjs";
 
 const ENDPOINTS = [
   "https://overpass-api.de/api/interpreter",
@@ -139,6 +146,16 @@ async function collect(bbox, cache, depth = 0, acc = []) {
   return acc;
 }
 
+/**
+ * 이름 태그에 정보가 없는 값들.
+ * "화장실", "장애인용 화장실" 같은 건 이름이 아니라 분류라서, 카드에 그대로 띄우면
+ * 옆 화장실과 구분이 안 되고 "장애인 전용"으로 오해될 수도 있다. 기본값으로 되돌린다.
+ */
+const GENERIC_NAME_RE =
+  /^(공중|공용|공공|간이|이동식|장애인용?|남자|여자|남녀공용)?\s*(화장실|toilet|wc|restroom)s?$/i;
+
+const DEFAULT_NAME = "공중화장실";
+
 /** OSM element → 앱 레코드 */
 function toRecord(el) {
   const lat = el.lat ?? el.center?.lat;
@@ -150,9 +167,16 @@ function toRecord(el) {
   // 사유·비공개 화장실은 앱에 띄우면 안 된다
   if (["private", "no", "permissive_no"].includes(t.access)) return null;
 
-  const name = (t["name:ko"] || t.name || "").trim() || "공중화장실";
+  const rawName = (t["name:ko"] || t.name || "").trim();
+  const name = !rawName || GENERIC_NAME_RE.test(rawName) ? DEFAULT_NAME : rawName;
 
-  const addr = [t["addr:province"], t["addr:city"], t["addr:district"], t["addr:street"], t["addr:housenumber"]]
+  const addr = [
+    t["addr:province"],
+    t["addr:city"],
+    t["addr:district"],
+    t["addr:street"],
+    t["addr:housenumber"],
+  ]
     .filter(Boolean)
     .join(" ")
     .trim();
@@ -164,11 +188,24 @@ function toRecord(el) {
     latitude: Number(lat.toFixed(6)),
     longitude: Number(lng.toFixed(6)),
     source: "osm",
-    // OSM 은 공공/민간 구분 태그가 없어 type 은 비워 두고 병합 단계에 맡긴다
+    // OSM 은 공중/개방 구분 태그가 없어 type 은 비워 두고 병합 단계에 맡긴다
   };
-  if (t.opening_hours) rec.openHours = t.opening_hours;
+  const hours = normalizeOpenHours(t.opening_hours);
+  if (hours) rec.openHours = hours;
   if (t.wheelchair === "yes") rec.hasDisabledStall = true;
   if (t.unisex === "yes") rec.isUnisex = true;
+  if (t.changing_table === "yes") rec.hasChangingTable = true;
+  // fee=no 는 "무료임이 확인됨" — 태그가 없는 것(정보 없음)과 구분해서 담는다
+  if (t.fee === "no") rec.isFree = true;
+  else if (t.fee === "yes") rec.isFree = false;
+  // 고객 전용은 누구나 쓰는 화장실이 아니라 거절당할 수 있어 따로 표시한다
+  if (t.access === "customers") rec.customersOnly = true;
+  if (t.level !== undefined && t.level !== "") {
+    const lv = Number(t.level);
+    // OSM level 은 0 이 지상 1층 기준이라 한국식 층수로 옮긴다
+    if (Number.isFinite(lv))
+      rec.floor = lv < 0 ? `지하 ${Math.abs(lv)}층` : `${lv + 1}층`;
+  }
   if (t.operator) rec.managedBy = t.operator;
   if (t.phone || t["contact:phone"]) rec.phone = t.phone || t["contact:phone"];
   return rec;

@@ -86,6 +86,57 @@ export function isInKorea(lat, lng) {
   return lat >= 33.0 && lat <= 38.7 && lng >= 124.5 && lng <= 132.0;
 }
 
+const OSM_DAY_KO = {
+  Mo: "월",
+  Tu: "화",
+  We: "수",
+  Th: "목",
+  Fr: "금",
+  Sa: "토",
+  Su: "일",
+};
+
+/**
+ * OSM `opening_hours` → 앱이 쓰는 한국어 개방시간 표기.
+ *
+ * OSM 값의 90%가 "24/7", "Mo-Su 09:00-18:00" 같은 OSM 문법인데,
+ * 그대로 두면 (1) 시니어에게 안 읽히고 (2) openNow 가 요일 제한을 놓쳐
+ * 평일만 여는 곳을 토요일에 "개방중"으로 잘못 판정한다.
+ *
+ * 변환 예:
+ *   "24/7"                → "상시개방"
+ *   "Mo-Su 09:00-18:00"   → "09:00~18:00(매일)"
+ *   "Mo-Fr 09:00-18:00"   → "09:00~18:00(평일)"
+ *   "Mo-Sa 09:00-18:00"   → "09:00~18:00(월~토)"
+ *
+ * 해석할 수 없는 값(계절 표기 등)은 null 을 돌려준다 — 읽히지 않는 원문을
+ * 그대로 띄우느니 개방시간 없음으로 두는 편이 낫다.
+ */
+export function normalizeOpenHours(raw) {
+  if (!raw) return null;
+  const s = String(raw).trim();
+
+  if (/^24\/7$/i.test(s)) return "상시개방";
+  // 이미 한국어 표기(제천 등)면 그대로 둔다
+  if (/[가-힣]/.test(s)) return s;
+
+  const m = s.match(
+    /^(?:(Mo|Tu|We|Th|Fr|Sa|Su)\s*-\s*(Mo|Tu|We|Th|Fr|Sa|Su)\s+)?(\d{1,2}:\d{2})\s*-\s*(\d{1,2}:\d{2})$/i
+  );
+  if (!m) return null;
+
+  const [, from, to, start, end] = m;
+  const range = `${start}~${end}`;
+  if (!from) return `${range}(매일)`;
+
+  const cap = (x) => x[0].toUpperCase() + x.slice(1).toLowerCase();
+  const f = cap(from);
+  const t = cap(to);
+  if (f === "Mo" && t === "Su") return `${range}(매일)`;
+  if (f === "Mo" && t === "Fr") return `${range}(평일)`;
+  return `${range}(${OSM_DAY_KO[f]}~${OSM_DAY_KO[t]})`;
+}
+
 /** 이름 정규화 — 중복 판정용 (공백/괄호/접미어 제거) */
 export function normalizeName(name) {
   return String(name ?? "")
@@ -118,12 +169,33 @@ export function normalizeRecord(rec) {
   if (rec.hasDisabledStall !== undefined)
     out.hasDisabledStall = !!rec.hasDisabledStall;
   if (rec.isUnisex !== undefined) out.isUnisex = !!rec.isUnisex;
+  if (rec.hasChangingTable !== undefined)
+    out.hasChangingTable = !!rec.hasChangingTable;
+  if (rec.isFree !== undefined) out.isFree = !!rec.isFree;
+  if (rec.customersOnly !== undefined) out.customersOnly = !!rec.customersOnly;
+  if (rec.floor) out.floor = String(rec.floor).trim();
   if (rec.type) out.type = rec.type;
   if (rec.host) out.host = String(rec.host).trim();
   if (rec.managedBy) out.managedBy = String(rec.managedBy).trim();
   if (rec.phone) out.phone = String(rec.phone).trim();
   return out;
 }
+
+/** 중복 통합 시 신뢰도 낮은 쪽에서 살려 올 필드 */
+const MERGEABLE_FIELDS = [
+  "address",
+  "openHours",
+  "phone",
+  "managedBy",
+  "host",
+  "type",
+  "hasDisabledStall",
+  "isUnisex",
+  "hasChangingTable",
+  "isFree",
+  "customersOnly",
+  "floor",
+];
 
 /**
  * 중복 제거.
@@ -182,16 +254,7 @@ export function dedupe(records, { sameMeters = 15, nameMeters = 60 } = {}) {
 
     if (dup) {
       // 신뢰도 낮은 쪽에만 있는 정보는 살려서 병합
-      for (const f of [
-        "address",
-        "openHours",
-        "phone",
-        "managedBy",
-        "host",
-        "type",
-        "hasDisabledStall",
-        "isUnisex",
-      ]) {
+      for (const f of MERGEABLE_FIELDS) {
         if (dup[f] === undefined && rec[f] !== undefined) dup[f] = rec[f];
       }
       dup.__mergedFrom = [...(dup.__mergedFrom ?? []), rec.__source];

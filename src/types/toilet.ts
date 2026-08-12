@@ -15,6 +15,17 @@ export interface Toilet {
   hasDisabledStall?: boolean;
   /** 남녀공용 여부 */
   isUnisex?: boolean;
+  /** 기저귀 교환대 보유 여부 */
+  hasChangingTable?: boolean;
+  /** 무료 여부 (true=무료 확인됨, false=유료, undefined=정보 없음) */
+  isFree?: boolean;
+  /**
+   * 고객 전용 화장실 (카페·매장 등).
+   * 누구나 쓸 수 있는 개방화장실과 달리 이용을 거절당할 수 있어 별도 표시한다.
+   */
+  customersOnly?: boolean;
+  /** 층 정보 (예: "지하 1층", "3층") — 건물 안 화장실 찾을 때 필요 */
+  floor?: string;
   /** 공중화장실 / 개방화장실 구분 */
   type?: ToiletType;
   /** 개방화장실일 때 제휴처 (예: "롯데마트", "용두시티") */

@@ -141,6 +141,7 @@ async function main() {
     disabledM: findCol(headers, "남성용", "장애인", "대변기"),
     disabledF: findCol(headers, "여성용", "장애인", "대변기"),
     unisex: findCol(headers, "남녀공용"),
+    changingTable: findCol(headers, "기저귀교환대"),
     managedBy: findCol(headers, "관리기관"),
     phone: findCol(headers, "전화번호"),
   };
@@ -167,6 +168,10 @@ async function main() {
       hasDisabledStall:
         toNum(r[col.disabledM]) > 0 || toNum(r[col.disabledF]) > 0,
       isUnisex: col.unisex >= 0 ? yes(r[col.unisex]) : false,
+      hasChangingTable:
+        col.changingTable >= 0 ? yes(r[col.changingTable]) : undefined,
+      // 공중화장실법상 공중·개방화장실은 무료가 원칙이라 무료로 본다
+      isFree: true,
       managedBy: get(r, col.managedBy),
       phone: get(r, col.phone),
       // 소유구분이 '개방화장실'이면 민간 협약 개방 — 앱에서 배지로 구분한다
@@ -260,6 +265,8 @@ async function main() {
       openHours: rec.openHours || undefined,
       hasDisabledStall: rec.hasDisabledStall,
       isUnisex: rec.isUnisex,
+      hasChangingTable: rec.hasChangingTable,
+      isFree: rec.isFree,
       type: rec.type,
       managedBy: rec.managedBy || undefined,
       phone: rec.phone || undefined,

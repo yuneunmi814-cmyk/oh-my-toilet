@@ -100,10 +100,16 @@ function main() {
 
   const stats = {
     총건수: final.length,
-    이름있음: final.filter((t) => t.name !== "공중화장실" && t.name !== "이름 없는 화장실").length,
+    이름있음: final.filter(
+      (t) => t.name !== "공중화장실" && t.name !== "이름 없는 화장실"
+    ).length,
     주소있음: final.filter((t) => t.address).length,
     개방시간: final.filter((t) => t.openHours).length,
     장애인칸: final.filter((t) => t.hasDisabledStall).length,
+    기저귀교환대: final.filter((t) => t.hasChangingTable).length,
+    무료확인: final.filter((t) => t.isFree === true).length,
+    유료: final.filter((t) => t.isFree === false).length,
+    고객전용: final.filter((t) => t.customersOnly).length,
     개방화장실: final.filter((t) => t.type === "open").length,
   };
   console.log("\n📊 최종 데이터셋");
