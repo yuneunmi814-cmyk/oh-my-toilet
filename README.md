@@ -30,18 +30,36 @@ npx expo start
 ```
 
 - Expo Go 앱으로 QR 코드를 찍으면 실기기에서 바로 실행됩니다.
-- **앱 실행에는 API 키가 필요 없습니다.** 실데이터([`src/data/toilets.json`](src/data/toilets.json))가
-  비어 있으면 서울 시청 주변 목업으로 동작하므로 UI를 바로 확인할 수 있습니다.
-- 실데이터를 채우려면 아래 [데이터 파이프라인](#데이터-파이프라인-실행법)을 실행하세요.
+- **앱 실행에는 API 키가 필요 없습니다.** 기본으로 **제천시 개방화장실 42곳**
+  실데이터([`src/data/toilets.json`](src/data/toilets.json))가 포함돼 있습니다.
+  (데이터셋이 비면 서울 목업으로 폴백)
+- 데이터 갱신/확장은 아래 [데이터 소스](#데이터-소스) 참고.
 - 네이티브 의존성 버전을 맞추려면: `npx expo install`
 
 ---
 
 ## 데이터 소스
 
-### 공공데이터 + 카카오 지오코딩 (메인)
+> **현재 번들 데이터:** 제천시 개방화장실 **42곳** (아래 A 방식으로 생성).
+> 앱을 켜면 이 실데이터가 거리순으로 나온다. 데이터셋이 비면 목업으로 폴백.
 
-원본은 **전국공중화장실표준데이터**(공공데이터포털 15012892)를 쓴다.
+### A. 지자체 개방화장실 공식 페이지 (현재 사용)
+
+제천시는 개방화장실 현황을 공식 Notion 페이지로 공개하고 QR코드로 안내한다.
+표의 네이버지도 링크(`naver.me`)를 따라가면 주소·좌표가 나오므로 그대로 데이터화한다.
+
+```bash
+npm run build:jecheon   # → src/data/toilets.json (제천 개방화장실)
+```
+
+- 스크립트: [`scripts/ingest-jecheon-notion.mjs`](scripts/ingest-jecheon-notion.mjs)
+- 출처: 제천시 개방화장실 안내 Notion (2026.07 기준 45곳, 좌표확보 42곳)
+- 좌표 없는 장소ID 링크 3곳은 네이버 API 차단으로 제외 (추후 보완)
+- 카카오 키 불필요 — 네이버 단축링크의 좌표(웹 메르카토르)를 WGS84로 변환
+
+### B. 전국공중화장실표준데이터 + 카카오 지오코딩 (확장용)
+
+전국 확장 시에는 **전국공중화장실표준데이터**(공공데이터포털 15012892)를 쓴다.
 
 > ⚠️ **중요:** 이 표준데이터는 **2025년 2월부터 WGS84 위·경도 좌표 제공이 중단**됐고,
 > 현재 오픈 API 없이 **CSV 다운로드만** 제공된다. 위치 기반 앱에 쓰려면 CSV의
@@ -124,7 +142,8 @@ oh-my-toilet/
 │   └── types/
 │       └── toilet.ts       # 화장실 데이터 타입
 ├── scripts/
-│   └── build-toilets.mjs   # CSV → 카카오 지오코딩 → toilets.json
+│   ├── build-toilets.mjs         # CSV → 카카오 지오코딩 → toilets.json
+│   └── ingest-jecheon-notion.mjs # 제천 개방화장실 Notion → toilets.json
 ├── app.json                # Expo 설정 (권한/플러그인)
 └── .env.example            # KAKAO_REST_API_KEY (파이프라인용)
 ```
