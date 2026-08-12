@@ -8,8 +8,11 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "typecheck": "tsc --noEmit",
-    "build:toilets": "node scripts/build-toilets.mjs",
-    "build:jecheon": "node scripts/ingest-jecheon-notion.mjs"
+    "fetch:osm": "node scripts/sources/osm.mjs",
+    "fetch:jecheon": "node scripts/sources/jecheon-notion.mjs",
+    "fetch:csv": "node scripts/sources/public-csv.mjs",
+    "enrich:addresses": "node scripts/enrich-addresses.mjs",
+    "build:dataset": "node scripts/build-dataset.mjs"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "1.23.1",

@@ -53,7 +53,8 @@ export function ToiletCard({ toilet }: Props) {
       </View>
 
       <Text style={styles.address} numberOfLines={1}>
-        {toilet.address || "주소 정보 없음"}
+        {[toilet.address, toilet.floor].filter(Boolean).join(" · ") ||
+          "주소 정보 없음"}
       </Text>
 
       <View style={styles.tags}>
@@ -61,6 +62,10 @@ export function ToiletCard({ toilet }: Props) {
           <Text style={styles.walk}>
             🚶 도보 약 {walkingMinutes(toilet.distanceMeters!)}분
           </Text>
+        ) : null}
+        {/* 고객 전용은 헛걸음할 수 있으니 가장 먼저 경고한다 */}
+        {toilet.customersOnly ? (
+          <Text style={styles.warnTag}>🛍️ 고객 전용</Text>
         ) : null}
         {toilet.type === "open" ? (
           <Text style={styles.openTag}>
@@ -72,6 +77,12 @@ export function ToiletCard({ toilet }: Props) {
         ) : null}
         {toilet.hasDisabledStall ? (
           <Text style={styles.tag}>♿ 장애인</Text>
+        ) : null}
+        {toilet.hasChangingTable ? (
+          <Text style={styles.tag}>🍼 기저귀대</Text>
+        ) : null}
+        {toilet.isFree === false ? (
+          <Text style={styles.warnTag}>💰 유료</Text>
         ) : null}
         {toilet.source === "user" ? (
           <Text style={styles.userTag}>🙋 제보</Text>
@@ -127,4 +138,6 @@ const styles = StyleSheet.create({
   tag: { fontSize: fontSize.sm, color: colors.textMuted },
   openTag: { fontSize: fontSize.sm, color: colors.primary, fontWeight: "700" },
   userTag: { fontSize: fontSize.sm, color: colors.accent, fontWeight: "700" },
+  /** 헛걸음 위험 정보(고객 전용·유료)는 눈에 띄게 */
+  warnTag: { fontSize: fontSize.sm, color: colors.danger, fontWeight: "700" },
 });

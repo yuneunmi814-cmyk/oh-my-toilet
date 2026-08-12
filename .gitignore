@@ -31,8 +31,10 @@ yarn-error.*
 .env.local
 .env.*.local
 
-# 데이터 파이프라인 지오코딩 캐시
+# 데이터 파이프라인 캐시 (재생성 가능, 용량 큼)
 scripts/.geocode-cache.json
+data/raw/.osm-tiles.json
+data/raw/*.failures.json
 
 # IDE
 .idea/
