@@ -62,11 +62,19 @@ export function ToiletCard({ toilet }: Props) {
             🚶 도보 약 {walkingMinutes(toilet.distanceMeters!)}분
           </Text>
         ) : null}
+        {toilet.type === "open" ? (
+          <Text style={styles.openTag}>
+            🏬 개방{toilet.host ? ` · ${toilet.host}` : ""}
+          </Text>
+        ) : null}
         {toilet.openHours ? (
           <Text style={styles.tag}>🕒 {toilet.openHours}</Text>
         ) : null}
         {toilet.hasDisabledStall ? (
           <Text style={styles.tag}>♿ 장애인</Text>
+        ) : null}
+        {toilet.source === "user" ? (
+          <Text style={styles.userTag}>🙋 제보</Text>
         ) : null}
       </View>
     </Pressable>
@@ -117,4 +125,6 @@ const styles = StyleSheet.create({
   },
   walk: { fontSize: fontSize.sm, color: colors.text, fontWeight: "600" },
   tag: { fontSize: fontSize.sm, color: colors.textMuted },
+  openTag: { fontSize: fontSize.sm, color: colors.primary, fontWeight: "700" },
+  userTag: { fontSize: fontSize.sm, color: colors.accent, fontWeight: "700" },
 });

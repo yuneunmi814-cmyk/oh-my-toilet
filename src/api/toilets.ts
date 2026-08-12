@@ -26,12 +26,14 @@ export const isUsingRealData = DATASET.length > 0;
 /**
  * 현재 위치에서 가까운 화장실을 거리순으로 반환한다.
  * (데이터셋 전체를 클라이언트에서 거리 계산 후 정렬)
+ * @param extra 데이터셋에 합쳐서 보여줄 추가 화장실 (예: 사용자 제보)
  */
 export async function getNearbyToilets(
   coords: Coords,
+  extra: Toilet[] = [],
   limit = 20
 ): Promise<ToiletWithDistance[]> {
-  return toiletSource()
+  return [...toiletSource(), ...extra]
     .map((t) => ({
       ...t,
       distanceMeters: haversineMeters(

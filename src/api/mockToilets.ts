@@ -39,12 +39,14 @@ export const MOCK_TOILETS: Toilet[] = [
   },
   {
     id: "mock-4",
-    name: "을지로입구역 화장실",
-    address: "서울 중구 을지로 지하",
+    name: "롯데백화점 본점 개방화장실",
+    address: "서울 중구 남대문로 81",
     latitude: 37.5660,
     longitude: 126.9827,
-    openHours: "05:30~24:00",
+    openHours: "10:30~20:00",
     hasDisabledStall: true,
+    type: "open",
+    host: "롯데백화점",
     source: "mock",
   },
   {

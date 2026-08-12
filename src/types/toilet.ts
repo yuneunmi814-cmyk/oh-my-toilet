@@ -1,3 +1,6 @@
+/** 화장실 유형: 공중화장실 vs 개방화장실(민간 협약 개방) */
+export type ToiletType = "public" | "open";
+
 /** 앱 내부에서 사용하는 정규화된 화장실 정보 */
 export interface Toilet {
   /** 고유 id (공공데이터에는 없어서 좌표+이름으로 생성) */
@@ -12,11 +15,15 @@ export interface Toilet {
   hasDisabledStall?: boolean;
   /** 남녀공용 여부 */
   isUnisex?: boolean;
+  /** 공중화장실 / 개방화장실 구분 */
+  type?: ToiletType;
+  /** 개방화장실일 때 제휴처 (예: "롯데마트", "용두시티") */
+  host?: string;
   /** 관리기관/전화 */
   managedBy?: string;
   phone?: string;
-  /** 데이터 출처 */
-  source: "publicData" | "osm" | "mock";
+  /** 데이터 출처 (user = 사용자 제보) */
+  source: "publicData" | "osm" | "mock" | "user";
 }
 
 /** 거리 정보가 붙은 화장실 (홈 화면 리스트용) */

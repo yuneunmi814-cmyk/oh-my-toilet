@@ -130,6 +130,17 @@ export default function HomeScreen() {
                 <Text style={styles.navButtonText}>⭐  즐겨찾기</Text>
               </Pressable>
             </View>
+            <Pressable
+              style={({ pressed }) => [
+                styles.submitButton,
+                pressed && styles.submitButtonPressed,
+              ]}
+              onPress={() => router.push("/submit")}
+              accessibilityRole="button"
+              accessibilityLabel="화장실 제보하기"
+            >
+              <Text style={styles.submitButtonText}>➕  화장실 제보하기</Text>
+            </Pressable>
             <FilterBar
               chips={FILTER_CHIPS}
               active={filters}
@@ -211,6 +222,19 @@ const styles = StyleSheet.create({
   navButtonPressed: { backgroundColor: colors.card },
   navButtonText: {
     color: colors.primary,
+    fontSize: fontSize.md,
+    fontWeight: "800",
+  },
+  submitButton: {
+    backgroundColor: colors.primary,
+    borderRadius: radius.md,
+    paddingVertical: spacing.md,
+    alignItems: "center",
+    marginBottom: spacing.md,
+  },
+  submitButtonPressed: { backgroundColor: colors.primaryDark },
+  submitButtonText: {
+    color: "#fff",
     fontSize: fontSize.md,
     fontWeight: "800",
   },

@@ -97,7 +97,8 @@ oh-my-toilet/
 │   ├── _layout.tsx         # 루트 네비게이션 + FavoritesProvider
 │   ├── index.tsx           # 홈: 가까운 화장실 리스트
 │   ├── map.tsx             # 지도 뷰 (마커 + 길찾기)
-│   └── favorites.tsx       # 즐겨찾기 목록
+│   ├── favorites.tsx       # 즐겨찾기 목록
+│   └── submit.tsx          # 사용자 제보 폼
 ├── src/
 │   ├── api/
 │   │   ├── toilets.ts      # 데이터셋 로드 + 거리순 정렬 + 목업 폴백
@@ -117,7 +118,8 @@ oh-my-toilet/
 │   │   └── openNow.ts      # 개방시간 → 지금 개방중 판별
 │   ├── store/
 │   │   ├── favorites.tsx   # 즐겨찾기 Context (AsyncStorage 영구저장)
-│   │   └── settings.tsx    # 앱 설정 Context (큰 글씨 모드 등)
+│   │   ├── settings.tsx    # 앱 설정 Context (큰 글씨 모드 등)
+│   │   └── submissions.tsx # 사용자 제보 Context (AsyncStorage)
 │   ├── theme/              # 시니어 접근성 고려 테마
 │   └── types/
 │       └── toilet.ts       # 화장실 데이터 타입
@@ -136,7 +138,8 @@ oh-my-toilet/
 - [x] **v0.3** 즐겨찾기 · 시니어 큰글씨 모드
 - [x] **v0.4** 공공데이터 + 카카오 지오코딩 파이프라인 (실데이터 연동)
 - [x] **v0.5** 필터 (♿ 장애인 · 🕒 지금 개방중)
-- [ ] **v0.6** 무료/유료 필터(OSM `fee` 병합) · 지도에도 필터 적용 · 전국 커버리지
+- [x] **v0.6** 사용자 제보 + 개방화장실 유형(공중/개방·제휴처) 모델
+- [ ] **v0.7** 제보 서버 공유·검수 · 지도에도 필터 적용 · OSM `fee` 병합
 - [ ] **v1.0** 토스 앱인토스(미니앱) 출시 → 이후 구글 플레이
 
 ### 앱인토스(미니앱) 참고
