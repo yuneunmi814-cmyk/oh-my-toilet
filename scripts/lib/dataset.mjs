@@ -16,6 +16,19 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 export const ROOT = path.resolve(__dirname, "../..");
 export const RAW_DIR = path.resolve(ROOT, "data/raw");
 export const OUT_PATH = path.resolve(ROOT, "src/data/toilets.json");
+export const REGION_DIR = path.resolve(ROOT, "src/data/regions");
+
+/**
+ * 지역 타일 한 변의 크기(도).
+ * 전국 4.8만 건을 한 파일로 두면 12MB 라 앱 시작이 무거워진다.
+ * 0.5°(위도 기준 약 55km) 격자로 쪼개서 사용자 주변 타일만 읽는다.
+ */
+export const TILE_SIZE = 0.5;
+
+/** 좌표 → 타일 키 (파일명으로도 쓰인다) */
+export function tileKey(lat, lng) {
+  return `${Math.floor(lat / TILE_SIZE)}_${Math.floor(lng / TILE_SIZE)}`;
+}
 
 /** 소스 신뢰도 — 중복 시 높은 쪽을 남긴다. */
 export const SOURCE_RANK = {

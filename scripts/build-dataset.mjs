@@ -22,13 +22,16 @@ import fs from "node:fs";
 import path from "node:path";
 import {
   OUT_PATH,
+  REGION_DIR,
   ROOT,
   SOURCE_RANK,
+  TILE_SIZE,
   argOf,
   dedupe,
   listRawSources,
   normalizeRecord,
   readRaw,
+  tileKey,
 } from "./lib/dataset.mjs";
 
 const ONLY = argOf("only", null);
@@ -158,16 +161,76 @@ function main() {
     return;
   }
 
-  fs.mkdirSync(path.dirname(OUT_PATH), { recursive: true });
-  fs.writeFileSync(OUT_PATH, JSON.stringify(final), "utf8");
-  const kb = Math.round(fs.statSync(OUT_PATH).size / 1024);
-  console.log(
-    `\n✅ 저장 완료 → ${path.relative(ROOT, OUT_PATH)} (${kb}KB, ${final.length}건)`
+  writeRegionTiles(final);
+}
+
+/**
+ * 지역 타일로 나눠 저장한다.
+ *
+ * 전국을 한 파일로 두면 12MB 라 앱 시작할 때 통째로 파싱해야 한다.
+ * 0.5° 격자로 쪼개면 사용자가 있는 타일(+ 가까운 이웃)만 읽으면 된다.
+ * 함께 만드는 index.ts 는 Metro 가 정적으로 분석할 수 있는 require 맵이라
+ * 각 타일이 "처음 필요할 때" 파싱된다.
+ */
+function writeRegionTiles(records) {
+  fs.rmSync(REGION_DIR, { recursive: true, force: true });
+  fs.mkdirSync(REGION_DIR, { recursive: true });
+
+  const tiles = new Map();
+  for (const rec of records) {
+    const k = tileKey(rec.latitude, rec.longitude);
+    if (!tiles.has(k)) tiles.set(k, []);
+    tiles.get(k).push(rec);
+  }
+
+  const meta = {};
+  let maxKb = 0;
+  for (const [k, list] of [...tiles].sort()) {
+    const file = path.join(REGION_DIR, `${k}.json`);
+    fs.writeFileSync(file, JSON.stringify(list), "utf8");
+    const kb = Math.round(fs.statSync(file).size / 1024);
+    maxKb = Math.max(maxKb, kb);
+    meta[k] = list.length;
+  }
+
+  // Metro 는 require 경로가 정적이어야 번들에 포함하므로 맵을 생성해 둔다
+  const keys = Object.keys(meta).sort();
+  const lines = keys.map(
+    (k) => `  "${k}": () => require("./${k}.json") as Toilet[],`
   );
-  if (kb > 4000)
-    console.log(
-      "   ⚠️ 번들이 큽니다. --sido 로 지역을 좁히거나 원격 데이터 전환을 검토하세요."
-    );
+  fs.writeFileSync(
+    path.join(REGION_DIR, "index.ts"),
+    `// 이 파일은 scripts/build-dataset.mjs 가 생성합니다. 직접 수정하지 마세요.\n` +
+      `import type { Toilet } from "@/types/toilet";\n\n` +
+      `/** 타일 한 변 크기(도) — 파이프라인의 TILE_SIZE 와 같아야 한다 */\n` +
+      `export const TILE_SIZE = ${TILE_SIZE};\n\n` +
+      `/** 타일별 화장실 수 (로드하지 않고도 존재 여부를 알 수 있다) */\n` +
+      `export const TILE_COUNTS: Record<string, number> = ${JSON.stringify(
+        meta,
+        null,
+        2
+      )};\n\n` +
+      `/** 타일 키 → 데이터 로더. 호출할 때 비로소 파싱된다. */\n` +
+      `export const TILE_LOADERS: Record<string, () => Toilet[]> = {\n${lines.join(
+        "\n"
+      )}\n};\n`,
+    "utf8"
+  );
+
+  // 전국 단일 파일은 더 이상 쓰지 않는다 (남아 있으면 번들에 중복 포함된다)
+  if (fs.existsSync(OUT_PATH)) fs.rmSync(OUT_PATH);
+
+  const totalKb = Math.round(
+    keys.reduce(
+      (s, k) => s + fs.statSync(path.join(REGION_DIR, `${k}.json`)).size,
+      0
+    ) / 1024
+  );
+  console.log(
+    `\n✅ 저장 완료 → ${path.relative(ROOT, REGION_DIR)}/ ` +
+      `(${keys.length}개 타일, 합계 ${totalKb}KB, 가장 큰 타일 ${maxKb}KB)`
+  );
+  console.log(`   앱은 사용자 주변 타일만 읽습니다 (시작 시 전량 파싱 없음).`);
 }
 
 main();
