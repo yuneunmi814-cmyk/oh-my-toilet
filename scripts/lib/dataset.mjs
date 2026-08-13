@@ -238,6 +238,31 @@ export function dedupe(records, { sameMeters = 15, nameMeters = 60 } = {}) {
     const bLng = Math.floor(rec.longitude / CELL);
     let dup = null;
 
+    /**
+     * 같은 화장실인지 판정.
+     *
+     * 출처가 다르면(OSM vs 공공데이터) 좌표가 가까운 것만으로 같다고 본다.
+     * 하지만 출처가 같으면 각 행이 따로 등록된 별개 시설이다. 예를 들어
+     * 서울숲 화장실 12곳은 주소가 모두 "뚝섬로 273"이라 지오코딩 결과가
+     * 0m 로 겹치는데, 거리만 보면 한 곳으로 합쳐져 11곳이 사라진다.
+     * 그래서 같은 출처끼리는 이름까지 같을 때만 합친다.
+     */
+    const isSame = (other, d) => {
+      if (rec.__source === other.__source) {
+        if (d > nameMeters) return false;
+        const a = normalizeName(rec.name);
+        const b = normalizeName(other.name);
+        return !!a && !!b && (a === b || a.includes(b) || b.includes(a));
+      }
+      if (d <= sameMeters) return true;
+      if (d <= nameMeters) {
+        const a = normalizeName(rec.name);
+        const b = normalizeName(other.name);
+        return !!a && !!b && (a.includes(b) || b.includes(a));
+      }
+      return false;
+    };
+
     outer: for (let dx = -1; dx <= 1; dx++) {
       for (let dy = -1; dy <= 1; dy++) {
         const list = buckets.get(`${bLat + dx}:${bLng + dy}`);
@@ -249,17 +274,9 @@ export function dedupe(records, { sameMeters = 15, nameMeters = 60 } = {}) {
             other.latitude,
             other.longitude
           );
-          if (d <= sameMeters) {
+          if (isSame(other, d)) {
             dup = other;
             break outer;
-          }
-          if (d <= nameMeters) {
-            const a = normalizeName(rec.name);
-            const b = normalizeName(other.name);
-            if (a && b && (a.includes(b) || b.includes(a))) {
-              dup = other;
-              break outer;
-            }
           }
         }
       }
