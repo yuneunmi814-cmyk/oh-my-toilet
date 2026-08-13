@@ -93,9 +93,44 @@ function main() {
   const mergedCount = all.length - merged.length;
   console.log(`   중복 ${mergedCount}건 통합 → ${merged.length}건`);
 
+  /*
+   * 앱 번들 축소.
+   *
+   * 레코드가 4만 건을 넘으면서 필드 "이름"이 값만큼 비싸졌다.
+   * (`hasChangingTable` 키 하나가 4.7만 번 반복되며 1MB를 차지)
+   * 그래서 값이 없는 것과 의미가 같은 필드는 아예 빼고, 앱에서 기본값으로 읽는다.
+   *   - 불리언: 참일 때만 저장 (거짓 = 없음 = 해당 없음)
+   *   - isFree: 유료일 때만 저장 (공중화장실법상 무료가 원칙)
+   *   - source: publicData 는 기본값이라 생략
+   *   - 좌표: 소수 5자리(약 1m)면 화장실 찾기에 충분
+   */
+  const compact = (rec) => {
+    const { __source, __mergedFrom, ...r } = rec;
+    const out = {
+      id: r.id,
+      name: r.name,
+      latitude: Number(r.latitude.toFixed(5)),
+      longitude: Number(r.longitude.toFixed(5)),
+    };
+    if (r.address) out.address = r.address;
+    if (r.openHours) out.openHours = r.openHours;
+    if (r.type && r.type !== "public") out.type = r.type;
+    if (r.host) out.host = r.host;
+    if (r.floor) out.floor = r.floor;
+    if (r.managedBy) out.managedBy = r.managedBy;
+    if (r.phone) out.phone = r.phone;
+    if (r.hasDisabledStall) out.hasDisabledStall = true;
+    if (r.isUnisex) out.isUnisex = true;
+    if (r.hasChangingTable) out.hasChangingTable = true;
+    if (r.customersOnly) out.customersOnly = true;
+    if (r.isFree === false) out.isFree = false;
+    if (r.source && r.source !== "publicData") out.source = r.source;
+    return out;
+  };
+
   // 내부 필드 제거 + 안정적인 정렬(위도→경도)로 diff 최소화
   const final = merged
-    .map(({ __source, __mergedFrom, ...rest }) => rest)
+    .map(compact)
     .sort((a, b) => a.latitude - b.latitude || a.longitude - b.longitude);
 
   const stats = {
@@ -107,7 +142,7 @@ function main() {
     개방시간: final.filter((t) => t.openHours).length,
     장애인칸: final.filter((t) => t.hasDisabledStall).length,
     기저귀교환대: final.filter((t) => t.hasChangingTable).length,
-    무료확인: final.filter((t) => t.isFree === true).length,
+    // 무료는 기본값이라 저장하지 않는다 — 유료로 확인된 곳만 센다
     유료: final.filter((t) => t.isFree === false).length,
     고객전용: final.filter((t) => t.customersOnly).length,
     개방화장실: final.filter((t) => t.type === "open").length,

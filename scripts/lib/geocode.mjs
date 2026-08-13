@@ -85,11 +85,15 @@ export function saveCache(cache) {
  *
  * @param items   [{ address, name }] — name 은 주소 검색 실패 시 키워드 검색에 쓰임
  * @param opts    { provider, onProgress, cache }
+ *                cache 를 직접 넘기면 디스크에 저장하지 않는다 — 테스트용 임시
+ *                캐시가 공용 캐시 파일을 덮어쓰는 사고를 막기 위함.
  * @returns       items 와 같은 순서의 [{ lat, lng } | null]
  */
 export async function geocodeAll(items, opts = {}) {
   const provider = opts.provider ?? resolveProvider();
+  const persist = opts.cache === undefined;
   const cache = opts.cache ?? loadCache();
+  const flush = () => persist && saveCache(cache);
   const results = new Array(items.length).fill(null);
   const stats = { cached: 0, fetched: 0, failed: 0, provider: provider.name };
 
@@ -140,7 +144,7 @@ export async function geocodeAll(items, opts = {}) {
       if (!coord) stats.failed++;
 
       if (dirty >= 200) {
-        saveCache(cache);
+        flush();
         dirty = 0;
       }
       opts.onProgress?.(stats.cached + stats.fetched, items.length, stats);
@@ -150,7 +154,7 @@ export async function geocodeAll(items, opts = {}) {
   await Promise.all(
     Array.from({ length: provider.concurrency }, () => worker())
   );
-  saveCache(cache);
+  flush();
 
   if (quotaHit) {
     // 여기까지 받은 좌표는 캐시에 남아 있으므로, 한도 회복 후 재실행하면 이어진다.
@@ -169,7 +173,9 @@ export async function reverseGeocodeAll(points, opts = {}) {
   const provider = opts.provider ?? resolveProvider();
   if (!provider.reverse)
     throw new Error(`${provider.name} 은 역지오코딩을 지원하지 않습니다.`);
+  const persist = opts.cache === undefined;
   const cache = opts.cache ?? loadCache();
+  const flush = () => persist && saveCache(cache);
   const results = new Array(points.length).fill(null);
   const stats = { cached: 0, fetched: 0, failed: 0, provider: provider.name };
 
@@ -216,7 +222,7 @@ export async function reverseGeocodeAll(points, opts = {}) {
       stats.fetched++;
       if (!addr) stats.failed++;
       if (dirty >= 200) {
-        saveCache(cache);
+        flush();
         dirty = 0;
       }
       opts.onProgress?.(stats.cached + stats.fetched, points.length, stats);
@@ -226,7 +232,7 @@ export async function reverseGeocodeAll(points, opts = {}) {
   await Promise.all(
     Array.from({ length: provider.concurrency }, () => worker())
   );
-  saveCache(cache);
+  flush();
   if (quotaHit) throw quotaHit;
   return { results, stats };
 }
@@ -258,10 +264,36 @@ async function httpJson(url, headers = {}) {
   return null;
 }
 
-/** 카카오 로컬 API — 주소검색 후 실패하면 키워드검색으로 폴백 */
+/** 주소에서 시군구 토큰을 뽑는다 ("서울특별시 종로구 …" → "종로구") */
+function districtOf(address) {
+  const m = String(address).match(/(\S+?[시군구])(?:\s|$)/g);
+  if (!m) return null;
+  // 첫 토큰은 보통 시도(서울특별시)라 두 번째를 쓴다. 없으면 첫 번째.
+  const tokens = m.map((t) => t.trim());
+  return (tokens[1] ?? tokens[0]) || null;
+}
+
+/**
+ * 카카오 로컬 API — 3단계로 좌표를 찾는다.
+ *   1) 주소 검색
+ *   2) "이름 주소" 키워드 검색
+ *   3) 이름만 키워드 검색 (+ 시군구 일치 검증)
+ *
+ * 3번이 필요한 이유: 카카오 키워드 검색은 "이름 주소"를 한 덩어리로 해석해서
+ * 자주 실패하는데, 이름만 넣으면 찾아지는 경우가 많다. 다만 이름만으로 찾으면
+ * 다른 지역의 동명 장소가 걸릴 수 있어서, 결과 주소의 시군구가 원래 주소와
+ * 같을 때만 받아들인다.
+ */
 async function kakaoLookup(address, name) {
   const key = process.env.KAKAO_REST_API_KEY;
   const headers = { Authorization: `KakaoAK ${key}` };
+  const keyword = (q) =>
+    httpJson(
+      `https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent(
+        q
+      )}`,
+      headers
+    );
 
   const byAddress = await httpJson(
     `https://dapi.kakao.com/v2/local/search/address.json?query=${encodeURIComponent(
@@ -272,16 +304,39 @@ async function kakaoLookup(address, name) {
   const a = byAddress?.documents?.[0];
   if (a) return { lat: Number(a.y), lng: Number(a.x) };
 
-  // 주소가 옛 지번이거나 오타인 경우가 잦아 "이름 주소"로 장소 검색을 한 번 더
-  if (name) {
-    const byKeyword = await httpJson(
-      `https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent(
-        `${name} ${address}`
-      )}`,
-      headers
-    );
-    const k = byKeyword?.documents?.[0];
-    if (k) return { lat: Number(k.y), lng: Number(k.x) };
+  if (!name) return null;
+
+  const withAddress = (await keyword(`${name} ${address}`))?.documents?.[0];
+  if (withAddress)
+    return { lat: Number(withAddress.y), lng: Number(withAddress.x) };
+
+  // 이름만으로 재시도 — 단, 같은 시군구 안에서 찾은 것만 인정
+  const district = districtOf(address);
+  const inDistrict = (docs) => {
+    for (const doc of docs ?? []) {
+      const found = `${doc.address_name ?? ""} ${doc.road_address_name ?? ""}`;
+      if (!district || found.includes(district))
+        return { lat: Number(doc.y), lng: Number(doc.x) };
+    }
+    return null;
+  };
+
+  const byName = inDistrict((await keyword(name))?.documents);
+  if (byName) return byName;
+
+  /*
+   * 마지막으로 이름에서 군더더기를 떼고 한 번 더.
+   * "효창운동장화장실" → "효창운동장", "와룡공원(배드민턴장)" → "와룡공원"
+   * 처럼 시설명 뒤에 붙은 분류어·괄호가 검색을 막는 경우가 많다.
+   * 너무 짧아지면(예: "창2") 엉뚱한 곳이 걸리므로 3글자 이상일 때만 쓴다.
+   */
+  const bare = name
+    .replace(/\(.*?\)/g, "")
+    .replace(/(공중|개방|간이|이동)?화장실\s*$/, "")
+    .trim();
+  if (bare.length >= 3 && bare !== name) {
+    const byBare = inDistrict((await keyword(bare))?.documents);
+    if (byBare) return byBare;
   }
   return null;
 }

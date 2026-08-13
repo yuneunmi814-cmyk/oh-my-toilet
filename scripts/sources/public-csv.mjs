@@ -28,7 +28,7 @@
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
-import { RAW_DIR, ROOT, argOf, writeRaw } from "../lib/dataset.mjs";
+import { RAW_DIR, ROOT, argOf, readRaw, writeRaw } from "../lib/dataset.mjs";
 import {
   QuotaExhaustedError,
   geocodeAll,
@@ -39,6 +39,8 @@ const CSV_PATH = argOf("csv", null);
 const SIDO = argOf("sido", null);
 const LIMIT = Number(argOf("limit", Infinity));
 const PROVIDER_NAME = argOf("provider", "auto");
+/** 지난 실행에서 좌표를 못 찾은 건만 다시 시도하고, 기존 결과에 합친다 */
+const RETRY_FAILED = !!argOf("retry-failed", false);
 
 if (!CSV_PATH || CSV_PATH === true) {
   console.error(
@@ -61,12 +63,16 @@ function readCsvText(file) {
   const utf8 = buf.toString("utf8");
   if (!utf8.includes("�")) return utf8;
 
-  console.log("ℹ️  UTF-8 디코딩 실패 → EUC-KR 변환 시도");
+  // 공공데이터 CSV 는 CP949 가 많다. EUC-KR 로 먼저 시도하되,
+  // 확장 한자·특수문자에서 깨지면(Illegal byte sequence) CP949 로 넘어간다.
   for (const enc of ["EUC-KR", "CP949"]) {
     try {
-      return execFileSync("iconv", ["-f", enc, "-t", "UTF-8", file], {
+      const text = execFileSync("iconv", ["-f", enc, "-t", "UTF-8", file], {
         maxBuffer: 1024 * 1024 * 1024,
+        stdio: ["ignore", "pipe", "ignore"], // iconv 경고를 화면에 흘리지 않는다
       }).toString("utf8");
+      console.log(`ℹ️  ${enc} → UTF-8 변환 완료`);
+      return text;
     } catch {
       /* 다음 인코딩 시도 */
     }
@@ -109,12 +115,20 @@ function parseCsv(text) {
   return rows;
 }
 
-/** 헤더 부분매칭 — 데이터셋 버전마다 컬럼명이 조금씩 다르다 */
+/**
+ * 헤더에서 컬럼 위치를 찾는다.
+ *
+ * 데이터셋 버전마다 컬럼명이 조금씩 달라서(예: 화장실소유구분 vs 화장실소유구분명)
+ * 부분매칭이 필요하지만, 부분매칭만 하면 "구분명"이 "화장실소유구분명"에도 걸린다.
+ * 그래서 정확히 일치하는 컬럼을 먼저 찾고, 없을 때만 부분매칭으로 넘어간다.
+ */
 function findCol(headers, ...needles) {
-  return headers.findIndex((h) => {
-    const s = String(h).replace(/\s/g, "");
-    return needles.every((n) => s.includes(n));
-  });
+  const norm = headers.map((h) => String(h).replace(/\s/g, ""));
+  if (needles.length === 1) {
+    const exact = norm.indexOf(needles[0]);
+    if (exact >= 0) return exact;
+  }
+  return norm.findIndex((s) => needles.every((n) => s.includes(n)));
 }
 
 const toNum = (v) => {
@@ -122,6 +136,48 @@ const toNum = (v) => {
   return Number.isFinite(n) ? n : 0;
 };
 const yes = (v) => /^(y|yes|1|o|있음|설치|공용)/i.test(String(v ?? "").trim());
+
+/**
+ * 개방시간 정규화.
+ *
+ * 이 데이터셋은 개방시간이 두 컬럼에 나뉘어 있고, 앞 컬럼은 시간이 아니라 분류다.
+ *   개방시간     = 상시 | 정시 | 불규칙 | 미개방
+ *   개방시간상세 = "09:00~18:00", "24시간", "(평일)09:00~18:00", "9시간" …(60%만 채워짐)
+ *
+ * "상시" 2만여 건은 상세가 비어 있어서, 상세만 읽으면 "24시간 개방"이라는
+ * 정보를 통째로 잃는다. 그래서 두 컬럼을 같이 본다.
+ *
+ * @returns 앱 표기 문자열, 또는 null(정보 없음), 또는 false(미개방)
+ */
+function normalizeCsvHours(category, detail) {
+  const c = (category ?? "").trim();
+  const d = (detail ?? "").trim();
+
+  if (c === "미개방" || d === "미개방") return false;
+
+  const always = /^(상시|24시간|24시|연중무휴|항상)$/;
+  if (always.test(c) || always.test(d)) return "상시개방";
+
+  if (d) {
+    // "9시간" 처럼 길이만 적힌 값은 언제 여는지 알 수 없어 버린다
+    if (/^\d+\s*시간$/.test(d)) return c === "상시" ? "상시개방" : null;
+
+    // "(평일)09:00~18:00" → "09:00~18:00(평일)" 로 자리 옮기고 구분자 통일
+    const dayTag = d.match(/\((평일|주말|공휴일)\)/);
+    const range = d.match(/(\d{1,2}:\d{2})\s*[~\-–]\s*(\d{1,2}:\d{2})/);
+    if (range) {
+      const body = `${range[1]}~${range[2]}`;
+      // 00:00~24:00 은 사실상 상시개방
+      if (body === "00:00~24:00") return "상시개방";
+      return dayTag ? `${body}(${dayTag[1]})` : body;
+    }
+    // 시간 범위가 없지만 여러 요일 규칙이 적힌 복잡한 값은 원문을 그대로 보여준다
+    if (/\d{1,2}:\d{2}/.test(d)) return d;
+  }
+
+  if (c === "상시") return "상시개방";
+  return null;
+}
 
 async function main() {
   console.log(`📄 CSV 읽는 중: ${CSV_PATH}`);
@@ -137,7 +193,10 @@ async function main() {
     roadAddr: findCol(headers, "소재지도로명주소"),
     jibunAddr: findCol(headers, "소재지지번주소"),
     openHours: findCol(headers, "개방시간"),
-    ownership: findCol(headers, "화장실소유구분"),
+    openHoursDetail: findCol(headers, "개방시간상세"),
+    // 공중/개방 구분은 '구분명'에 있다. '화장실소유구분명'은 공공기관/민간이라
+    // 여기서 "개방"을 찾으면 개방화장실 2만여 곳을 통째로 놓친다.
+    category: findCol(headers, "구분명"),
     disabledM: findCol(headers, "남성용", "장애인", "대변기"),
     disabledF: findCol(headers, "여성용", "장애인", "대변기"),
     unisex: findCol(headers, "남녀공용"),
@@ -157,14 +216,19 @@ async function main() {
   const get = (r, i) => (i >= 0 ? String(r[i] ?? "").trim() : "");
 
   // 행 → 레코드 (주소 없는 행은 지오코딩 불가라 제외)
+  let closed = 0;
   let records = rows.slice(1).map((r) => {
     const road = get(r, col.roadAddr);
     const jibun = get(r, col.jibunAddr);
-    const ownership = get(r, col.ownership);
-    const rec = {
+    const hours = normalizeCsvHours(
+      get(r, col.openHours),
+      get(r, col.openHoursDetail)
+    );
+    return {
       name: get(r, col.name) || "공중화장실",
       address: road || jibun,
-      openHours: get(r, col.openHours),
+      openHours: hours === false ? null : hours,
+      isClosed: hours === false,
       hasDisabledStall:
         toNum(r[col.disabledM]) > 0 || toNum(r[col.disabledF]) > 0,
       isUnisex: col.unisex >= 0 ? yes(r[col.unisex]) : false,
@@ -174,14 +238,28 @@ async function main() {
       isFree: true,
       managedBy: get(r, col.managedBy),
       phone: get(r, col.phone),
-      // 소유구분이 '개방화장실'이면 민간 협약 개방 — 앱에서 배지로 구분한다
-      type: ownership.includes("개방") ? "open" : "public",
+      // 구분명이 '개방화장실'이면 민간 협약 개방 — 앱에서 배지로 구분한다
+      type: get(r, col.category).includes("개방") ? "open" : "public",
     };
-    return rec;
   });
 
   const before = records.length;
+  // 미개방으로 표기된 화장실은 찾아가도 못 쓴다 — 앱에 띄우지 않는다
+  closed = records.filter((x) => x.isClosed).length;
+  records = records.filter((x) => !x.isClosed);
   records = records.filter((x) => x.address);
+
+  /*
+   * 주소가 시도명 하나뿐인 행은 버린다.
+   * 지오코딩하면 실패가 아니라 그 시도의 "중심점"이 돌아오는데,
+   * 실제 위치와 수 km 떨어진 좌표가 아무 경고 없이 진짜처럼 박힌다.
+   * (실례: 강남 개포동 화장실이 서울시청 앞에 찍혔다)
+   * 좌표가 없는 것보다 틀린 좌표가 더 나쁘다.
+   */
+  const SIDO_ONLY =
+    /^(서울특별시|부산광역시|대구광역시|인천광역시|광주광역시|대전광역시|울산광역시|세종특별자치시|경기도|강원(특별자치)?도|충청[북남]도|전라[북남]도|전북특별자치도|전남광주통합특별시|경상[북남]도|제주(특별자치)?도)$/;
+  const vague = records.filter((x) => SIDO_ONLY.test(x.address.trim())).length;
+  records = records.filter((x) => !SIDO_ONLY.test(x.address.trim()));
   if (SIDO && SIDO !== true)
     records = records.filter((x) => x.address.startsWith(String(SIDO)));
 
@@ -193,11 +271,33 @@ async function main() {
     seen.add(k);
     return true;
   });
+  // 실패분 재시도: 지난 실행의 failures 목록에 있는 건만 남긴다
+  const failPath = path.join(RAW_DIR, "public-csv.failures.json");
+  let previous = [];
+  if (RETRY_FAILED) {
+    if (!fs.existsSync(failPath)) {
+      console.error(`❌ ${failPath} 가 없습니다. 먼저 일반 실행을 하세요.`);
+      process.exit(1);
+    }
+    const failed = new Set(
+      JSON.parse(fs.readFileSync(failPath, "utf8")).map(
+        (f) => `${f.name}|${f.address}`
+      )
+    );
+    records = records.filter((x) => failed.has(`${x.name}|${x.address}`));
+    previous = readRaw("public-csv");
+    console.log(
+      `🔁 실패분 재시도 모드 — 대상 ${records.length}건 (기존 성공분 ${previous.length}건은 유지)`
+    );
+  }
+
   if (Number.isFinite(LIMIT)) records = records.slice(0, LIMIT);
 
   console.log(
     `📊 ${before}행 → 대상 ${records.length}건` +
-      `${SIDO && SIDO !== true ? ` (시도=${SIDO})` : " (전국)"}`
+      `${SIDO && SIDO !== true ? ` (시도=${SIDO})` : " (전국)"}` +
+      `${closed ? ` / 미개방 제외 ${closed}건` : ""}` +
+      `${vague ? ` / 주소부실 제외 ${vague}건` : ""}`
   );
 
   // 지오코딩
@@ -274,19 +374,23 @@ async function main() {
     });
   });
 
-  const outPath = writeRaw("public-csv", out);
+  // 재시도 모드면 기존 성공분 뒤에 새로 건진 것만 덧붙인다
+  const merged = RETRY_FAILED ? [...previous, ...out] : out;
+  const outPath = writeRaw("public-csv", merged);
   console.log(
     `\n✅ ${out.length}건 좌표 확보 (실패 ${failures.length}건, 캐시적중 ${stats.cached}건)` +
+      (RETRY_FAILED ? `\n   누적 ${merged.length}건` : "") +
       `\n   → ${path.relative(ROOT, outPath)}`
   );
 
   if (failures.length) {
-    const failPath = path.join(RAW_DIR, "public-csv.failures.json");
     fs.writeFileSync(failPath, JSON.stringify(failures, null, 2), "utf8");
     console.log(
       `   ⚠️ 실패 목록: ${path.relative(ROOT, failPath)}\n` +
         "      (주소가 옛 지번이거나 오타인 경우가 대부분입니다)"
     );
+  } else if (fs.existsSync(failPath)) {
+    fs.rmSync(failPath);
   }
   console.log("   다음: npm run build:dataset 으로 병합하세요.");
 }

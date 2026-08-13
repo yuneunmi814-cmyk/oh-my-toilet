@@ -26,15 +26,21 @@ export interface Toilet {
   customersOnly?: boolean;
   /** 층 정보 (예: "지하 1층", "3층") — 건물 안 화장실 찾을 때 필요 */
   floor?: string;
-  /** 공중화장실 / 개방화장실 구분 */
+  /**
+   * 공중화장실 / 개방화장실 구분.
+   * 번들 축소를 위해 기본값("public")은 데이터에서 생략된다 — 없으면 공중화장실.
+   */
   type?: ToiletType;
   /** 개방화장실일 때 제휴처 (예: "롯데마트", "용두시티") */
   host?: string;
   /** 관리기관/전화 */
   managedBy?: string;
   phone?: string;
-  /** 데이터 출처 (user = 사용자 제보) */
-  source: "publicData" | "osm" | "mock" | "user";
+  /**
+   * 데이터 출처 (user = 사용자 제보).
+   * 번들 축소를 위해 기본값("publicData")은 데이터에서 생략된다.
+   */
+  source?: "publicData" | "osm" | "mock" | "user";
 }
 
 /** 거리 정보가 붙은 화장실 (홈 화면 리스트용) */
