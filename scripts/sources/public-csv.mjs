@@ -194,9 +194,11 @@ async function main() {
     jibunAddr: findCol(headers, "소재지지번주소"),
     openHours: findCol(headers, "개방시간"),
     openHoursDetail: findCol(headers, "개방시간상세"),
-    // 공중/개방 구분은 '구분명'에 있다. '화장실소유구분명'은 공공기관/민간이라
-    // 여기서 "개방"을 찾으면 개방화장실 2만여 곳을 통째로 놓친다.
+    // 공중/개방 구분은 '구분명'(공중화장실/개방화장실/간이/이동)에 있다.
+    // 다만 이건 법적 분류라서, 구청 소유 공원 화장실도 '개방화장실'로 등록된다.
+    // 앱 배지가 뜻하는 "민간이 열어준 화장실"인지는 '화장실소유구분명'을 봐야 한다.
     category: findCol(headers, "구분명"),
+    ownership: findCol(headers, "화장실소유구분"),
     disabledM: findCol(headers, "남성용", "장애인", "대변기"),
     disabledF: findCol(headers, "여성용", "장애인", "대변기"),
     unisex: findCol(headers, "남녀공용"),
@@ -238,8 +240,18 @@ async function main() {
       isFree: true,
       managedBy: get(r, col.managedBy),
       phone: get(r, col.phone),
-      // 구분명이 '개방화장실'이면 민간 협약 개방 — 앱에서 배지로 구분한다
-      type: get(r, col.category).includes("개방") ? "open" : "public",
+      /*
+       * 앱의 "🏬 개방" 배지는 이용자에게 "여긴 남의 가게·건물 화장실이라
+       * 영업시간에 묶이고 양해를 구해야 할 수 있다"는 뜻으로 읽힌다.
+       * 그래서 법적 분류(구분명)만으로는 부족하고 소유 주체까지 봐야 한다.
+       * 구청 소유 공원 화장실도 법적으로는 '개방화장실'로 등록되기 때문이다.
+       * (성동구는 214곳 전부를 개방화장실로 등록했지만 150곳이 공공 소유다)
+       */
+      type:
+        get(r, col.category).includes("개방") &&
+        get(r, col.ownership).includes("민간")
+          ? "open"
+          : "public",
     };
   });
 
