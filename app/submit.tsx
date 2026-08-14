@@ -20,7 +20,7 @@ import type { ToiletType } from "@/types/toilet";
 export default function SubmitScreen() {
   const insets = useSafeAreaInsets();
   const { coords, status, refresh } = useLocation();
-  const { addSubmission } = useSubmissions();
+  const { addSubmission, submissions } = useSubmissions();
 
   const [name, setName] = useState("");
   const [type, setType] = useState<ToiletType>("public");
@@ -66,6 +66,18 @@ export default function SubmitScreen() {
         지금 내 위치에 있는 화장실을 제보해요.{"\n"}
         공공데이터에 아직 없는 곳을 함께 채워가요.
       </Text>
+
+      {submissions.length > 0 ? (
+        <Pressable
+          style={styles.manageLink}
+          onPress={() => router.push("/my-submissions")}
+          accessibilityRole="button"
+        >
+          <Text style={styles.manageLinkText}>
+            📋 내가 제보한 곳 {submissions.length}곳 관리 →
+          </Text>
+        </Pressable>
+      ) : null}
 
       {/* 위치 상태 */}
       <View style={styles.locBox}>
@@ -175,6 +187,20 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     lineHeight: 26,
     marginBottom: spacing.md,
+  },
+  manageLink: {
+    borderWidth: 1.5,
+    borderColor: colors.primary,
+    borderRadius: radius.md,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    alignItems: "center",
+    marginBottom: spacing.lg,
+  },
+  manageLinkText: {
+    color: colors.primary,
+    fontSize: fontSize.md,
+    fontWeight: "700",
   },
   locBox: {
     backgroundColor: colors.card,
