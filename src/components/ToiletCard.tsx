@@ -1,5 +1,7 @@
 import { Pressable, StyleSheet, View } from "react-native";
 import { AppText as Text } from "@/components/AppText";
+import { AppIcon } from "@/components/AppIcon";
+import { Tag } from "@/components/Tag";
 import { formatDistance, walkingMinutes } from "@/lib/distance";
 import { openDirections } from "@/lib/directions";
 import { useFavorites } from "@/store/favorites";
@@ -46,9 +48,11 @@ export function ToiletCard({ toilet }: Props) {
           accessibilityRole="button"
           accessibilityLabel={fav ? "즐겨찾기 해제" : "즐겨찾기 추가"}
         >
-          <Text style={[styles.star, fav && styles.starOn]}>
-            {fav ? "⭐" : "☆"}
-          </Text>
+          <AppIcon
+            name={fav ? "star" : "starOutline"}
+            size={fontSize.xl}
+            color={fav ? colors.accent : colors.textMuted}
+          />
         </Pressable>
       </View>
 
@@ -59,33 +63,39 @@ export function ToiletCard({ toilet }: Props) {
 
       <View style={styles.tags}>
         {hasDistance ? (
-          <Text style={styles.walk}>
-            🚶 도보 약 {walkingMinutes(toilet.distanceMeters!)}분
-          </Text>
+          <Tag
+            icon="walk"
+            label={`도보 약 ${walkingMinutes(toilet.distanceMeters!)}분`}
+            color={colors.text}
+            bold
+          />
         ) : null}
         {/* 고객 전용은 헛걸음할 수 있으니 가장 먼저 경고한다 */}
         {toilet.customersOnly ? (
-          <Text style={styles.warnTag}>🛍️ 고객 전용</Text>
+          <Tag icon="customersOnly" label="고객 전용" color={colors.danger} bold />
         ) : null}
         {toilet.type === "open" ? (
-          <Text style={styles.openTag}>
-            🏬 개방{toilet.host ? ` · ${toilet.host}` : ""}
-          </Text>
+          <Tag
+            icon="open"
+            label={`개방${toilet.host ? ` · ${toilet.host}` : ""}`}
+            color={colors.primary}
+            bold
+          />
         ) : null}
         {toilet.openHours ? (
-          <Text style={styles.tag}>🕒 {toilet.openHours}</Text>
+          <Tag icon="clock" label={toilet.openHours} />
         ) : null}
         {toilet.hasDisabledStall ? (
-          <Text style={styles.tag}>♿ 장애인</Text>
+          <Tag icon="accessible" label="장애인" />
         ) : null}
         {toilet.hasChangingTable ? (
-          <Text style={styles.tag}>🍼 기저귀대</Text>
+          <Tag icon="changingTable" label="기저귀대" />
         ) : null}
         {toilet.isFree === false ? (
-          <Text style={styles.warnTag}>💰 유료</Text>
+          <Tag icon="paid" label="유료" color={colors.danger} bold />
         ) : null}
         {toilet.source === "user" ? (
-          <Text style={styles.userTag}>🙋 제보</Text>
+          <Tag icon="report" label="제보" color={colors.accent} bold />
         ) : null}
       </View>
     </Pressable>
@@ -121,8 +131,6 @@ const styles = StyleSheet.create({
     marginRight: spacing.sm,
   },
   starButton: { paddingHorizontal: spacing.xs },
-  star: { fontSize: fontSize.xl, color: colors.textMuted },
-  starOn: { color: colors.accent },
   address: {
     fontSize: fontSize.sm,
     color: colors.textMuted,
@@ -134,10 +142,4 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     marginTop: spacing.sm,
   },
-  walk: { fontSize: fontSize.sm, color: colors.text, fontWeight: "600" },
-  tag: { fontSize: fontSize.sm, color: colors.textMuted },
-  openTag: { fontSize: fontSize.sm, color: colors.primary, fontWeight: "700" },
-  userTag: { fontSize: fontSize.sm, color: colors.accent, fontWeight: "700" },
-  /** 헛걸음 위험 정보(고객 전용·유료)는 눈에 띄게 */
-  warnTag: { fontSize: fontSize.sm, color: colors.danger, fontWeight: "700" },
 });

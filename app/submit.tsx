@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText as Text } from "@/components/AppText";
+import { AppIcon, type IconName } from "@/components/AppIcon";
 import { useLocation } from "@/hooks/useLocation";
 import { useSubmissions } from "@/store/submissions";
 import { colors, fontSize, radius, spacing } from "@/theme";
@@ -73,8 +74,9 @@ export default function SubmitScreen() {
           onPress={() => router.push("/my-submissions")}
           accessibilityRole="button"
         >
+          <AppIcon name="list" size={fontSize.md} color={colors.primary} />
           <Text style={styles.manageLinkText}>
-            📋 내가 제보한 곳 {submissions.length}곳 관리 →
+            내가 제보한 곳 {submissions.length}곳 관리 →
           </Text>
         </Pressable>
       ) : null}
@@ -82,16 +84,20 @@ export default function SubmitScreen() {
       {/* 위치 상태 */}
       <View style={styles.locBox}>
         {coords ? (
-          <Text style={styles.locOk}>
-            📍 현재 위치로 등록됩니다{"\n"}
-            <Text style={styles.locCoord}>
-              {coords.latitude.toFixed(5)}, {coords.longitude.toFixed(5)}
+          <View style={styles.locInner}>
+            <AppIcon name="place" size={fontSize.md} color={colors.text} />
+            <Text style={styles.locOk}>
+              현재 위치로 등록됩니다{"\n"}
+              <Text style={styles.locCoord}>
+                {coords.latitude.toFixed(5)}, {coords.longitude.toFixed(5)}
+              </Text>
             </Text>
-          </Text>
+          </View>
         ) : (
-          <Pressable onPress={refresh}>
+          <Pressable onPress={refresh} style={styles.locInner}>
+            <AppIcon name="place" size={fontSize.md} color={colors.accent} />
             <Text style={styles.locWarn}>
-              📍 위치를 확인하는 중… (안 되면 눌러서 다시 시도)
+              위치를 확인하는 중… (안 되면 눌러서 다시 시도)
             </Text>
           </Pressable>
         )}
@@ -112,24 +118,34 @@ export default function SubmitScreen() {
       <View style={styles.typeRow}>
         {(
           [
-            { key: "public", label: "🚻 공중화장실" },
-            { key: "open", label: "🏬 개방화장실" },
-          ] as const
-        ).map((opt) => (
-          <Pressable
-            key={opt.key}
-            onPress={() => setType(opt.key)}
-            style={[styles.typeBtn, type === opt.key && styles.typeBtnOn]}
-            accessibilityRole="radio"
-            accessibilityState={{ selected: type === opt.key }}
-          >
-            <Text
-              style={[styles.typeLabel, type === opt.key && styles.typeLabelOn]}
+            { key: "public", label: "공중화장실", icon: "restroom" },
+            { key: "open", label: "개방화장실", icon: "open" },
+          ] as const satisfies readonly {
+            key: ToiletType;
+            label: string;
+            icon: IconName;
+          }[]
+        ).map((opt) => {
+          const on = type === opt.key;
+          return (
+            <Pressable
+              key={opt.key}
+              onPress={() => setType(opt.key)}
+              style={[styles.typeBtn, on && styles.typeBtnOn]}
+              accessibilityRole="radio"
+              accessibilityState={{ selected: on }}
             >
-              {opt.label}
-            </Text>
-          </Pressable>
-        ))}
+              <AppIcon
+                name={opt.icon}
+                size={fontSize.md}
+                color={on ? "#fff" : colors.textMuted}
+              />
+              <Text style={[styles.typeLabel, on && styles.typeLabelOn]}>
+                {opt.label}
+              </Text>
+            </Pressable>
+          );
+        })}
       </View>
 
       {/* 제휴처 (개방화장실일 때만) */}
@@ -158,7 +174,10 @@ export default function SubmitScreen() {
 
       {/* 장애인칸 */}
       <View style={styles.switchRow}>
-        <Text style={styles.label}>♿ 장애인 화장실 있음</Text>
+        <View style={styles.switchLabel}>
+          <AppIcon name="accessible" size={fontSize.md} color={colors.text} />
+          <Text style={styles.label}>장애인 화장실 있음</Text>
+        </View>
         <Switch
           value={hasDisabledStall}
           onValueChange={setHasDisabledStall}
@@ -189,12 +208,15 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   manageLink: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 6,
     borderWidth: 1.5,
     borderColor: colors.primary,
     borderRadius: radius.md,
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.md,
-    alignItems: "center",
     marginBottom: spacing.lg,
   },
   manageLinkText: {
@@ -208,7 +230,8 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     marginBottom: spacing.lg,
   },
-  locOk: { fontSize: fontSize.md, color: colors.text, lineHeight: 26 },
+  locInner: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
+  locOk: { flex: 1, fontSize: fontSize.md, color: colors.text, lineHeight: 26 },
   locCoord: { fontSize: fontSize.sm, color: colors.textMuted },
   locWarn: { fontSize: fontSize.md, color: colors.accent },
   label: {
@@ -230,11 +253,14 @@ const styles = StyleSheet.create({
   typeRow: { flexDirection: "row", gap: spacing.sm, marginBottom: spacing.lg },
   typeBtn: {
     flex: 1,
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 6,
     borderWidth: 1.5,
     borderColor: colors.border,
     borderRadius: radius.md,
     paddingVertical: spacing.md,
-    alignItems: "center",
   },
   typeBtnOn: { borderColor: colors.primary, backgroundColor: colors.primary },
   typeLabel: { fontSize: fontSize.md, fontWeight: "700", color: colors.textMuted },
@@ -245,6 +271,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     marginBottom: spacing.xl,
   },
+  switchLabel: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
   submit: {
     backgroundColor: colors.primary,
     borderRadius: radius.md,

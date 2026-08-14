@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { FlatList, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText as Text } from "@/components/AppText";
+import { AppIcon } from "@/components/AppIcon";
 import { ToiletCard } from "@/components/ToiletCard";
 import { useLocation } from "@/hooks/useLocation";
 import { haversineMeters } from "@/lib/distance";
@@ -32,11 +33,11 @@ export default function FavoritesScreen() {
   if (favorites.length === 0) {
     return (
       <View style={styles.center}>
-        <Text style={styles.emoji}>⭐</Text>
+        <AppIcon name="starOutline" size={56} color={colors.textMuted} />
         <Text style={styles.title}>저장한 화장실이 없어요</Text>
         <Text style={styles.desc}>
           자주 가는 곳이나 미리 알아두고 싶은{"\n"}
-          화장실의 별(☆)을 눌러 저장해 두세요.
+          화장실의 별 아이콘을 눌러 저장해 두세요.
         </Text>
       </View>
     );
@@ -64,12 +65,12 @@ const styles = StyleSheet.create({
     padding: spacing.xl,
     backgroundColor: colors.bg,
   },
-  emoji: { fontSize: 56, marginBottom: spacing.md },
   title: {
     fontSize: fontSize.lg,
     fontWeight: "700",
     color: colors.text,
     textAlign: "center",
+    marginTop: spacing.md,
   },
   desc: {
     fontSize: fontSize.md,

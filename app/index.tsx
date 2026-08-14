@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText as Text } from "@/components/AppText";
+import { AppIcon } from "@/components/AppIcon";
 import { FilterBar, type FilterChip } from "@/components/FilterBar";
 import { ToiletCard } from "@/components/ToiletCard";
 import { useLocation } from "@/hooks/useLocation";
@@ -20,8 +21,8 @@ import { useSettings } from "@/store/settings";
 import { colors, fontSize, radius, spacing } from "@/theme";
 
 const FILTER_CHIPS: FilterChip[] = [
-  { key: "disabled", label: "♿ 장애인" },
-  { key: "openNow", label: "🕒 지금 개방중" },
+  { key: "disabled", label: "장애인", icon: "accessible" },
+  { key: "openNow", label: "지금 개방중", icon: "clock" },
 ];
 
 export default function HomeScreen() {
@@ -52,7 +53,7 @@ export default function HomeScreen() {
   if (status === "denied") {
     return (
       <View style={styles.center}>
-        <Text style={styles.emptyEmoji}>📍</Text>
+        <AppIcon name="place" size={56} color={colors.textMuted} />
         <Text style={styles.emptyTitle}>위치 권한이 필요해요</Text>
         <Text style={styles.emptyDesc}>
           가까운 화장실을 찾으려면{"\n"}위치 접근을 허용해 주세요.
@@ -116,7 +117,8 @@ export default function HomeScreen() {
                 accessibilityRole="button"
                 accessibilityLabel="지도로 보기"
               >
-                <Text style={styles.navButtonText}>🗺️  지도</Text>
+                <AppIcon name="map" size={fontSize.md} color={colors.primary} />
+                <Text style={styles.navButtonText}>지도</Text>
               </Pressable>
               <Pressable
                 style={({ pressed }) => [
@@ -127,7 +129,8 @@ export default function HomeScreen() {
                 accessibilityRole="button"
                 accessibilityLabel="즐겨찾기"
               >
-                <Text style={styles.navButtonText}>⭐  즐겨찾기</Text>
+                <AppIcon name="star" size={fontSize.md} color={colors.primary} />
+                <Text style={styles.navButtonText}>즐겨찾기</Text>
               </Pressable>
             </View>
             <Pressable
@@ -139,7 +142,8 @@ export default function HomeScreen() {
               accessibilityRole="button"
               accessibilityLabel="화장실 제보하기"
             >
-              <Text style={styles.submitButtonText}>➕  화장실 제보하기</Text>
+              <AppIcon name="addPlace" size={fontSize.md} color="#fff" />
+              <Text style={styles.submitButtonText}>화장실 제보하기</Text>
             </Pressable>
             <FilterBar
               chips={FILTER_CHIPS}
@@ -152,7 +156,7 @@ export default function HomeScreen() {
         ListEmptyComponent={
           !loading ? (
             <View style={styles.center}>
-              <Text style={styles.emptyEmoji}>🚽</Text>
+              <AppIcon name="restroom" size={56} color={colors.textMuted} />
               <Text style={styles.emptyTitle}>
                 {anyFilterOn
                   ? "필터에 맞는 화장실이 없어요"
@@ -213,11 +217,14 @@ const styles = StyleSheet.create({
   },
   navButton: {
     flex: 1,
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 6,
     borderWidth: 2,
     borderColor: colors.primary,
     borderRadius: radius.md,
     paddingVertical: spacing.md,
-    alignItems: "center",
   },
   navButtonPressed: { backgroundColor: colors.card },
   navButtonText: {
@@ -226,10 +233,13 @@ const styles = StyleSheet.create({
     fontWeight: "800",
   },
   submitButton: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 6,
     backgroundColor: colors.primary,
     borderRadius: radius.md,
     paddingVertical: spacing.md,
-    alignItems: "center",
     marginBottom: spacing.md,
   },
   submitButtonPressed: { backgroundColor: colors.primaryDark },
@@ -238,12 +248,12 @@ const styles = StyleSheet.create({
     fontSize: fontSize.md,
     fontWeight: "800",
   },
-  emptyEmoji: { fontSize: 56, marginBottom: spacing.md },
   emptyTitle: {
     fontSize: fontSize.lg,
     fontWeight: "700",
     color: colors.text,
     textAlign: "center",
+    marginTop: spacing.md,
   },
   emptyDesc: {
     fontSize: fontSize.md,

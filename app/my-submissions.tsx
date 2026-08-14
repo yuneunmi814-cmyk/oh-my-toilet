@@ -1,6 +1,8 @@
 import { Alert, FlatList, Pressable, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText as Text } from "@/components/AppText";
+import { AppIcon } from "@/components/AppIcon";
+import { Tag } from "@/components/Tag";
 import { openDirections } from "@/lib/directions";
 import { useSubmissions } from "@/store/submissions";
 import { colors, fontSize, radius, spacing } from "@/theme";
@@ -19,7 +21,7 @@ export default function MySubmissionsScreen() {
   if (submissions.length === 0) {
     return (
       <View style={styles.center}>
-        <Text style={styles.emoji}>🙋</Text>
+        <AppIcon name="report" size={56} color={colors.textMuted} />
         <Text style={styles.title}>아직 제보한 곳이 없어요</Text>
         <Text style={styles.desc}>
           산책 중 발견한 화장실을{"\n"}제보하면 여기에 모여요.
@@ -43,17 +45,24 @@ export default function MySubmissionsScreen() {
               <Text style={styles.name} numberOfLines={1}>
                 {item.name}
               </Text>
-              <Text style={styles.badge}>
-                {item.type === "open" ? "🏬 개방" : "🚻 공중"}
-              </Text>
+              <Tag
+                icon={item.type === "open" ? "open" : "restroom"}
+                label={item.type === "open" ? "개방" : "공중"}
+                color={item.type === "open" ? colors.primary : colors.textMuted}
+                bold
+              />
             </View>
             {item.openHours ? (
-              <Text style={styles.meta}>🕒 {item.openHours}</Text>
+              <Tag icon="clock" label={item.openHours} style={styles.metaRow} />
             ) : null}
-            {item.host ? <Text style={styles.meta}>🏬 {item.host}</Text> : null}
-            <Text style={styles.coord}>
-              📍 {item.latitude.toFixed(5)}, {item.longitude.toFixed(5)}
-            </Text>
+            {item.host ? (
+              <Tag icon="open" label={item.host} style={styles.metaRow} />
+            ) : null}
+            <Tag
+              icon="place"
+              label={`${item.latitude.toFixed(5)}, ${item.longitude.toFixed(5)}`}
+              style={styles.metaRow}
+            />
 
             <View style={styles.actions}>
               <Pressable
@@ -96,12 +105,12 @@ const styles = StyleSheet.create({
     padding: spacing.xl,
     backgroundColor: colors.bg,
   },
-  emoji: { fontSize: 56, marginBottom: spacing.md },
   title: {
     fontSize: fontSize.lg,
     fontWeight: "700",
     color: colors.text,
     textAlign: "center",
+    marginTop: spacing.md,
   },
   desc: {
     fontSize: fontSize.md,
@@ -130,13 +139,7 @@ const styles = StyleSheet.create({
     color: colors.text,
     marginRight: spacing.sm,
   },
-  badge: { fontSize: fontSize.sm, color: colors.primary, fontWeight: "700" },
-  meta: { fontSize: fontSize.sm, color: colors.textMuted, marginTop: spacing.xs },
-  coord: {
-    fontSize: fontSize.sm,
-    color: colors.textMuted,
-    marginTop: spacing.xs,
-  },
+  metaRow: { marginTop: spacing.xs },
   actions: { flexDirection: "row", gap: spacing.sm, marginTop: spacing.md },
   dirBtn: {
     flex: 1,

@@ -1,10 +1,12 @@
 import { Pressable, StyleSheet, View } from "react-native";
 import { AppText as Text } from "@/components/AppText";
+import { AppIcon, type IconName } from "@/components/AppIcon";
 import { colors, fontSize, radius, spacing } from "@/theme";
 
 export interface FilterChip {
   key: string;
   label: string;
+  icon: IconName;
 }
 
 interface Props {
@@ -29,6 +31,11 @@ export function FilterBar({ chips, active, onToggle }: Props) {
             accessibilityState={{ checked: on }}
             accessibilityLabel={`${chip.label} 필터`}
           >
+            <AppIcon
+              name={chip.icon}
+              size={fontSize.sm}
+              color={on ? "#fff" : colors.textMuted}
+            />
             <Text style={[styles.label, on && styles.labelOn]}>
               {chip.label}
             </Text>
@@ -47,6 +54,9 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   chip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.md,
     borderRadius: radius.lg,
