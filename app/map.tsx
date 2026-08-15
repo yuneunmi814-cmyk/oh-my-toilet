@@ -5,10 +5,12 @@ import { useLocation } from "@/hooks/useLocation";
 import { useNearbyToilets } from "@/hooks/useNearbyToilets";
 import { formatDistance, walkingMinutes } from "@/lib/distance";
 import { openDirections } from "@/lib/directions";
+import { useSettings } from "@/store/settings";
 import { colors, fontSize, spacing } from "@/theme";
 
 export default function MapScreen() {
-  const { coords, status } = useLocation();
+  const { locationConsent } = useSettings();
+  const { coords, status } = useLocation(locationConsent === true);
   const { toilets, loading } = useNearbyToilets(coords);
 
   if (!coords) {

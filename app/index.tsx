@@ -13,6 +13,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText as Text } from "@/components/AppText";
 import { AppIcon } from "@/components/AppIcon";
 import { FilterBar, type FilterChip } from "@/components/FilterBar";
+import { LocationConsent } from "@/components/LocationConsent";
 import { ToiletCard } from "@/components/ToiletCard";
 import { useLocation } from "@/hooks/useLocation";
 import { useNearbyToilets } from "@/hooks/useNearbyToilets";
@@ -27,9 +28,9 @@ const FILTER_CHIPS: FilterChip[] = [
 
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
-  const { coords, status, refresh } = useLocation();
+  const { largeText, toggleLargeText, locationConsent, ready } = useSettings();
+  const { coords, status, refresh } = useLocation(locationConsent === true);
   const { toilets, loading, reload } = useNearbyToilets(coords);
-  const { largeText, toggleLargeText } = useSettings();
   const [filters, setFilters] = useState<Record<string, boolean>>({
     disabled: false,
     openNow: false,
@@ -48,6 +49,20 @@ export default function HomeScreen() {
       }),
     [toilets, filters]
   );
+
+  // 설정(위치동의 포함) 로딩 대기
+  if (!ready) {
+    return (
+      <View style={styles.center}>
+        <ActivityIndicator size="large" color={colors.primary} />
+      </View>
+    );
+  }
+
+  // 위치정보 이용 동의 전 — 동의 화면 먼저
+  if (locationConsent !== true) {
+    return <LocationConsent />;
+  }
 
   // 위치 권한 거부 상태
   if (status === "denied") {
@@ -153,6 +168,15 @@ export default function HomeScreen() {
           </View>
         }
         renderItem={({ item }) => <ToiletCard toilet={item} />}
+        ListFooterComponent={
+          <Pressable
+            style={styles.footerLink}
+            onPress={() => router.push("/privacy")}
+            accessibilityRole="button"
+          >
+            <Text style={styles.footerLinkText}>개인정보처리방침</Text>
+          </Pressable>
+        }
         ListEmptyComponent={
           !loading ? (
             <View style={styles.center}>
@@ -270,4 +294,10 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
   },
   buttonText: { color: "#fff", fontSize: fontSize.md, fontWeight: "700" },
+  footerLink: { alignItems: "center", paddingVertical: spacing.lg },
+  footerLinkText: {
+    fontSize: fontSize.sm,
+    color: colors.textMuted,
+    textDecorationLine: "underline",
+  },
 });

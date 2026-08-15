@@ -25,6 +25,7 @@ export default function RootLayout() {
               <Stack.Screen name="favorites" options={{ title: "즐겨찾기" }} />
               <Stack.Screen name="submit" options={{ title: "화장실 제보하기" }} />
               <Stack.Screen name="my-submissions" options={{ title: "내 제보 관리" }} />
+              <Stack.Screen name="privacy" options={{ title: "개인정보처리방침" }} />
             </Stack>
           </SubmissionsProvider>
         </FavoritesProvider>
